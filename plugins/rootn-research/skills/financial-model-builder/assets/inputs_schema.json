@@ -1,0 +1,320 @@
+{
+  "meta": {
+    "ticker": "020150 KS",
+    "name": "롯데에너지머티리얼즈",
+    "currency": "KRW",
+    "unit": "억원",
+    "industry": "Industrial",
+    "frequency": "Q",
+    "fiscal_year_end": "12",
+    "periods": [
+      "2023",
+      "2024",
+      "2025",
+      "2026E",
+      "2027E"
+    ],
+    "_comment_periods": "분기면 2024Q1 형식. E suffix=추정(tier3 허용)."
+  },
+  "statements": {
+    "_comment": "정통 3-statement 베이스. Bloomberg 템플릿에 값이 있는 라인은 하나도 빼지 말고 그대로 옮긴다. lines의 각 항목={label, values(meta.periods에 정렬), key(선택: Revenue/COGS/GrossProfit/OpEx/OperatingProfit/NetIncome 중 하나-분석 연결용), fmt(pct/x/num0), bold, indent, source, tier}. 값 없는 라인=섹션헤더로 렌더.",
+    "income_statement": {
+      "source": "Bloomberg FA 템플릿 (값 있으면)",
+      "tier": 2,
+      "lines": [
+        {
+          "label": "Revenue",
+          "values": [],
+          "key": "Revenue",
+          "source": "BBG/DART",
+          "tier": 2
+        },
+        {
+          "label": "Cost of sales",
+          "values": [],
+          "key": "COGS"
+        },
+        {
+          "label": "Gross Profit",
+          "values": [],
+          "key": "GrossProfit",
+          "bold": true
+        },
+        {
+          "label": "SG&A / OpEx",
+          "values": [],
+          "key": "OpEx"
+        },
+        {
+          "label": "Operating Profit",
+          "values": [],
+          "key": "OperatingProfit",
+          "bold": true
+        },
+        {
+          "label": "Net Income",
+          "values": [],
+          "key": "NetIncome",
+          "bold": true
+        }
+      ]
+    },
+    "balance_sheet": {
+      "source": "Bloomberg FA 템플릿",
+      "tier": 2,
+      "lines": []
+    },
+    "cash_flow": {
+      "source": "Bloomberg FA 템플릿",
+      "tier": 2,
+      "lines": []
+    },
+    "ratios": {
+      "source": "Bloomberg FA 템플릿",
+      "tier": 2,
+      "lines": []
+    }
+  },
+  "quarterly": {
+    "_comment": "분기 시트(선택). sell-side 모델처럼 분기 컬럼 + FY컬럼(=SUM 분기, 라이브 링크)을 만든다. 각 line type: flow(합산)/stock(Q4값)/ratio(분기값만). key 태깅 시 분기 OPM 자동계산·연간 IS와 FY tie-out 체크 생성.",
+    "quarters": [
+      "1Q25",
+      "2Q25",
+      "3Q25",
+      "4Q25",
+      "1Q26",
+      "2Q26",
+      "3Q26",
+      "4Q26"
+    ],
+    "fy_groups": {
+      "2025": [
+        "1Q25",
+        "2Q25",
+        "3Q25",
+        "4Q25"
+      ],
+      "2026": [
+        "1Q26",
+        "2Q26",
+        "3Q26",
+        "4Q26"
+      ]
+    },
+    "lines": [
+      {
+        "label": "매출액",
+        "key": "Revenue",
+        "type": "flow",
+        "values": [],
+        "bold": true
+      },
+      {
+        "label": "  segment A",
+        "type": "flow",
+        "indent": 1,
+        "values": []
+      },
+      {
+        "label": "영업이익",
+        "key": "OperatingProfit",
+        "type": "flow",
+        "values": []
+      }
+    ]
+  },
+  "historicals": {
+    "_comment": "(구버전 호환용 fallback. statements가 있으면 무시됨.)",
+    "Revenue": {
+      "values": [],
+      "source": "BBG/DART",
+      "tier": 2
+    },
+    "COGS": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    },
+    "GrossProfit": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    },
+    "OpEx": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    },
+    "OperatingProfit": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    },
+    "NetIncome": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    }
+  },
+  "segments": {
+    "_comment": "지역·제품·고객 축. 각 segment는 기간별 revenue(필수), op/gp/volume/asp(선택, 있으면 bridge 정밀도↑).",
+    "axis_primary": "product",
+    "members": [
+      {
+        "name": "동박(Elecfoil)",
+        "axis": "product",
+        "revenue": {
+          "values": [],
+          "source": "",
+          "tier": 1
+        },
+        "op": {
+          "values": [],
+          "source": "",
+          "tier": 1
+        },
+        "volume": {
+          "values": [],
+          "unit": "톤",
+          "source": "",
+          "tier": 1
+        },
+        "asp": {
+          "values": [],
+          "unit": "원/kg",
+          "source": "",
+          "tier": 3
+        },
+        "geography": {
+          "한국": [],
+          "말레이시아": [],
+          "_note": "선택: 지역 split"
+        },
+        "customers": {
+          "_note": "선택: 주요 고객별 매출/비중"
+        }
+      }
+    ]
+  },
+  "revenue_bridge_drivers": {
+    "_comment": "volume/price 있으면 4-효과 분해. 없으면 organic/mix만.",
+    "mode": "organic_mix",
+    "fx": {
+      "values": [],
+      "source": "",
+      "tier": 2,
+      "_note": "기간별 평균환율 또는 해외매출비중×환율변동"
+    }
+  },
+  "margin_bridge": {
+    "_comment": "GM, OP% 시계열은 historicals에서 계산. 정성 분해 라벨만 여기.",
+    "gm_drivers_note": "",
+    "opex_leverage_note": ""
+  },
+  "leading_indicators": {
+    "backlog": {
+      "values": [],
+      "unit": "억원",
+      "source": "",
+      "tier": 1
+    },
+    "book_to_bill": {
+      "values": [],
+      "source": "",
+      "tier": 1
+    },
+    "export_volume": {
+      "values": [],
+      "unit": "톤",
+      "source": "관세청/통관",
+      "tier": 2
+    },
+    "export_value": {
+      "values": [],
+      "unit": "USD m",
+      "source": "",
+      "tier": 2
+    },
+    "capex": {
+      "values": [],
+      "unit": "억원",
+      "source": "",
+      "tier": 1
+    },
+    "capacity": {
+      "values": [],
+      "unit": "톤/년",
+      "source": "",
+      "tier": 1
+    },
+    "utilization": {
+      "values": [],
+      "unit": "%",
+      "source": "",
+      "tier": 1
+    },
+    "inventory": {
+      "values": [],
+      "unit": "억원",
+      "source": "",
+      "tier": 1
+    }
+  },
+  "assumptions": [
+    {
+      "item": "예: 2026E 동박 ASP",
+      "value": null,
+      "source": "증권사명 날짜 p.x",
+      "tier": 3,
+      "note": ""
+    }
+  ],
+  "qualitative": [
+    {
+      "thesis": "예: HVLP 동박 mix 확대로 마진 개선",
+      "evidence": "",
+      "source": "Gemini/GPT or 뉴스",
+      "tier": 5,
+      "primary_source_confirmed": false
+    }
+  ],
+  "peers": {
+    "_comment": "동종 peer 벤치마크. columns=비교 대상, rows=[라벨, 값1, 값2, ...]. 정성+정량 혼합 OK. tier는 출처 문구에 표기. 비어있으면 Peer benchmark 탭 생략.",
+    "source": "sell-side peer 리포트 / cross-valuation",
+    "tier": 3,
+    "columns": [
+      "미쓰이(5706)",
+      "후루카와(5801)",
+      "본사(티커)"
+    ],
+    "rows": [
+      [
+        "포지션",
+        "1st source",
+        "기술형 2nd source",
+        "신규 2nd source"
+      ],
+      [
+        "성장 원천",
+        "가격·믹스 주도",
+        "고부가 비중 확대",
+        "mix·ASP 개선"
+      ],
+      [
+        "2026E PER (배)",
+        "",
+        "",
+        ""
+      ],
+      [
+        "핵심 시사점",
+        "",
+        "",
+        ""
+      ]
+    ]
+  },
+  "data_gaps": [
+    "예: 고객별 매출 미공개 — sell-side 추정만 존재"
+  ]
+}

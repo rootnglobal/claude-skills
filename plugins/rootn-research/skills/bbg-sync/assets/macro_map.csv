@@ -1,0 +1,4 @@
+sector_pack,bbg_ticker,label
+jp_machinery,JNMTOY Index,공작기계수주 YoY (Bloomberg 검증 JNMTOY IND; 구 JMTOYOY는 미검증 오기)
+jp_tech,TODO,반도체장비 출하/일본수출 - 터미널 WBG서 확정 (후보 JNTBEXPY 일본수출YoY NSA=검증, 또는 SEAJ 일본반도체장비 billings)
+kr_semis,TODO,한국 반도체 수출 YoY - 터미널 WBG/ECST서 확정 (관세청 반도체 수출; 전체수출은 KOEXTOTL 계열)
