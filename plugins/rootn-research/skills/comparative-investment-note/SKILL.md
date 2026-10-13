@@ -1,6 +1,6 @@
 ---
 name: comparative-investment-note
-version: 260721b
+version: 261013
 description: >
   여러 종목(피어 그룹·테마 바스켓)을 한 번에 비교하는 Investment Note를 만드는 스킬.
   기본 산출물은 Excel 1개이며, 첫 시트 '비교요약'에 N개 종목을 side-by-side로
@@ -75,8 +75,8 @@ RootN 리서처용. **2개 이상의 종목을 받아 하나의 Excel에서 비�
 4. **기존 드라이브 자산 점검**: 각 종목의 `Investment Research/...` 폴더 존재 여부를
    `search_files`로 확인. 있으면 재사용, 없으면 수집 단계에서 생성. 테마 폴더
    (예: '일본 에너지')가 지정됐는지도 확인한다.
-5. **Bloomberg 자산 자동 점검(묻기 전에 먼저)**: 각 종목 `Model/`의 BBG 템플릿·덤프
-   (`*_bbg_*.xlsx`)를 확인하고, 브리지가 살아 있으면 `bbg-sync`로 바스켓 전 종목의
+5. **Bloomberg 자산 자동 점검(묻기 전에 먼저)**: 각 종목 `Model/`의 BBG 템플릿과 덤프
+   (`*_bbg_*.xlsx`, 공통규칙 §2 위치)를 확인하고, 브리지가 살아 있으면 `bbg-sync`로 바스켓 전 종목의
    인박스 신규 파일을 한 번에 인제스트한다(전체 모드). 컨센 위계는 종목 공통으로
    BEst 덤프 > CapIQ export > 무료 소스 — **비교표는 같은 위계의 소스로 통일**하고,
    섞이면 종목별 소스를 각주로 표기한다.

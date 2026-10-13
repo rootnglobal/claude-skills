@@ -1,6 +1,6 @@
 ---
 name: jp-research-collector
-version: 260805
+version: 261013
 description: "일본 주식 종목 리서치 자료 자동 수집 스킬. 종목명 또는 4자리 종목코드를 입력하면 Kabutan(株探), Minkabu(みんかぶ), 株予報Pro(IFIS)에서 컨센서스·애널리스트 정보를 스크래핑하고, 회사사계보 온라인(四季報オンライン)에서 독자예상·기사를 수집하고, 공식 IR 페이지에서 결산설명자료 PDF를 curl로 다운로드하고, Shared Research Full Report와 IR Agents 취재노트(IR 1:1 인터뷰 Q&A), Kabu Berry·湘南投資勉強会 개인투자자 IR Q&A를 수집하여 로컬 폴더에 종목명_티커_YYMM 구조로 정리하는 스킬입니다. '일본 종목 리서치', '일본주 자료 수집', '日本株リサーチ', 'JP 리서치', '일본 IR 자료', '일본 결산설명회', '일본 애널리스트', '일본 컨센서스', 'Kabutan', 'Minkabu', '株探', 'Shared Research', 'ログミー', '四季報', '사계보', 'Toyo Keizai', 'IR Agents', '취재노트', 'Kabu Berry', '湘南投資勉強会', '일본 어닝콜', '일본 실적발표 자료', '일본 종목 분석 자료 모으기', '일본 주식 리포트 수집' 등의 키워드가 나오면 이 스킬을 사용하세요. 일본 4자리 종목코드(예: 6758, 7203)나 일본 회사명(예: 소니, 토요타)이 언급되면서 리서치·자료·리포트·IR 등의 맥락이 있으면 이 스킬을 적극 활용하세요."
 ---
 
@@ -145,7 +145,7 @@ Chrome navigate → https://kabutan.jp/stock/finance?code={종목코드}
 
 ### 2-4. CapIQ estimates export — BEst 덤프 없을 때 컨센 1차 소스
 
-Drive `Model/`에 BEst 덤프(`*_bbg_*.xlsx`)가 없고 Chrome에 CapIQ 로그인 상태면,
+BEst 덤프(`*_bbg_*.xlsx`, 공통규칙 §2 위치)가 없고 Chrome에 CapIQ 로그인 상태면,
 `capiq-collector` §2-4 절차로 Estimates(Consensus Detail·Revisions·Segment)를 **Excel
 export**로 받는다 → `리서치/consensus/`. Kabuyoho/Minkabu 평균값보다 깊은
 (애널리스트 수·high/low/mean·revisions·세그먼트 추정) 데이터를 확보할 수 있다.

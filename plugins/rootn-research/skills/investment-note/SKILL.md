@@ -1,6 +1,6 @@
 ---
 name: investment-note
-version: 261012
+version: 261013
 description: >
   주식 종목의 Investment Note(투자 메모/노트)를 만드는 스킬. 기본 산출물은
   Excel 파일 1개이며, 첫 시트에 1페이지 요약(단어·숫자 위주, 서술 최소화, 국문)을
@@ -27,8 +27,8 @@ description: >
 리서처(RootN)용 종목 투자 노트 + 모델 제작 워크플로우. 한국(DART)·미국(SEC)·
 일본(EDINET)·중국(CNINFO) 상장사 모두 지원. Bloomberg 없이 드라이브 리포트 +
 공시 + 컨센서스 + 웹/뉴스만으로 작성하는 것을 기본으로 하되, **컨센서스는 3단계
-위계**를 따른다: (1) BEst 덤프(`Model/*_bbg_*.xlsx` Consensus/Revisions 시트,
-`bbg-sync` 인제스트분) > (2) CapIQ estimates export(`리서치/consensus/`) >
+위계**를 따른다: (1) BEst 덤프(`*_bbg_*.xlsx` Consensus/Revisions 시트,
+위치는 공통규칙 §2 — 보통 `Bloomberg_Inbox/dumps/`) > (2) CapIQ estimates export(`리서치/consensus/`) >
 (3) 무료 소스(FnGuide/리포트 Consensus 박스/Kabuyoho/Minkabu). 노트 작성 전
 Drive에서 (1)(2)를 먼저 찾고, 있으면 그것을 컨센 기준으로 쓰고 무료 소스는
 검증용으로만 쓴다. 어느 단계 소스를 썼는지 노트 요약에 명시한다.
@@ -71,7 +71,7 @@ Drive에서 (1)(2)를 먼저 찾고, 있으면 그것을 컨센 기준으로 쓰
 3. 리포트 정독: `read_file_content(fileId)`로 2~4개 핵심 리포트 + 사업보고서.
    - 사업보고서가 크면 저장된 파일을 bash python/grep으로 섹션 추출
      (매출실적·주요제품 단가·생산설비·가동률·원재료·CAPEX·주주현황).
-4. 컨센서스(3단계 위계): **먼저 Drive에서 BEst 덤프(`Model/*_bbg_*.xlsx`)와 CapIQ
+4. 컨센서스(3단계 위계): **먼저 Drive에서 BEst 덤프(`*_bbg_*.xlsx`, 공통규칙 §2 위치)와 CapIQ
    export(`리서치/consensus/`)를 찾는다.** 있으면 그것이 컨센 기준(1·2차).
    없을 때 무료 소스: FnGuide(comp.fnguide.com)는 JS 렌더링이라 web_fetch가 비면,
    최신 증권사 리포트의 "Consensus Data" 박스를 인용(= FnGuide 컨센). 네이버금융은 차단됨.

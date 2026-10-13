@@ -1,6 +1,6 @@
 ---
 name: financial-model-builder
-version: 260721b
+version: 261013
 description: 주식 종목의 financial model을 Bloomberg Excel 템플릿 위에 만들고, IR 자료·sell-side 리포트·뉴스·웹서치·Gemini/GPT 리서치를 통합해 지역·제품·고객 segment별 매출/이익 breakdown, 수출입·수주잔고 등 선행지표, 그리고 성장의 원천(매출성장 vs mix개선 vs 마진개선, GP/OP)과 그 가속(growth delta)·지속성을 숫자로 분해하는 스킬. "재무모델 만들어줘", "financial model", "실적 모델", "segment 매출 분해", "growth 분해", "성장 지속성 분석", "밸류에이션 모델", "어닝 모델", "수주잔고 모델", 종목명·티커와 함께 모델/추정/분해 맥락이 나오면 이 스킬을 적극 사용할 것. 한국(DART)·미국(SEC)·일본(EDINET)·중국(CNINFO) 상장사를 모두 지원하며, 자료는 구글 드라이브의 'Investment Research/[종목명 (티커)]/' 데이터룸(Model·리서치·IR 폴더)에서 읽고 결과도 그 Model 폴더에 저장한다.
 ---
 
@@ -28,8 +28,8 @@ description: 주식 종목의 financial model을 Bloomberg Excel 템플릿 위�
 
 > 회사 공시·IR > Bloomberg actual > sell-side estimate > 뉴스/웹 > Gemini·GPT
 
-**컨센서스(추정치)의 위계는 별도로**: BEst 덤프(`Model/*_bbg_*.xlsx`의 Consensus/Revisions
-시트, `bbg-sync` 인제스트분) > CapIQ estimates export(`리서치/consensus/`, 검증·차선) >
+**컨센서스(추정치)의 위계는 별도로**: BEst 덤프(`*_bbg_*.xlsx`의 Consensus/Revisions
+시트, 위치는 공통규칙 §2) > CapIQ estimates export(`리서치/consensus/`, 검증·차선) >
 개별 sell-side 리포트 수치 > 무료 소스(FnGuide/Kabuyoho/Minkabu). 위계가 다른 컨센 숫자가
 충돌하면 높은 위계를 쓰고 차이를 Assumptions에 메모한다.
 
@@ -61,7 +61,7 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
 
 ### 1. 데이터룸 찾기 + Bloomberg 템플릿·덤프 수집
 - Drive에서 `Investment Research/[종목명 (티커)]/Model/` 의 `*_Q.xlsx`(분기)와 `*_A.xlsx`(연간)를 찾는다.
-- **BEst 덤프도 함께 찾는다**: `Model/`의 `[티커]_bbg_[YYYYMMDD].xlsx`(`bbg-sync` 인제스트분,
+- **BEst 덤프도 함께 찾는다**: `[티커]_bbg_[YYYYMMDD].xlsx`(공통규칙 §2: Drive 검색, 보통 `Bloomberg_Inbox/dumps/`,
   최신 날짜 1개). 있으면 Consensus(FY1~3+분기)·Guidance·Recs·Revisions 시트를 로드해
   컨센 비교·guidance 갭 분석의 1차 소스로 쓴다. 없고 데스크톱 브리지가 살아 있으면
   `bbg-sync` 종목 모드를 먼저 1회 시도한다(오프라인이면 skip 보고).

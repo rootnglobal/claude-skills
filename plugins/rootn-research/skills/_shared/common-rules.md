@@ -15,9 +15,12 @@
 - **기본 업로드 정책**: 클로드가 수집하거나 생성한 최종 산출물(수집 자료·노트·모델·문서 등)은 기본적으로 해당 종목/테마 Drive 폴더에도 업로드한다(§9 방법 D로 올리고 §4로 검증). 폴더 구조는 `Investment Research/[종목명 (티커)]/{IR/, 리서치/, Model/}`; 대상이 모호하면 기존 폴더 우선, 없으면 사용자에게 확인. 임시·중간 파일은 업로드 제외.
 - 되돌릴 수 없는 작업은 반드시 사전 확인: 드라이브 파일 이동/휴지통, 이메일 발송, 웹폼 제출.
   (이메일은 임시보관함 저장까지, 웹폼은 작성까지가 스킬의 몫이다.)
-- **Bloomberg 덤프 재사용**: 종목의 재무·컨센·가이던스·리비전을 다루는 분석 스킬은 시작 시 Drive `[종목]/Model/`의
-  최신 `*_bbg_*.xlsx`(bbg-sync 덤프)를 **1차 소스로 확인·활용**한다(시트 Meta/Consensus/Guidance/Recs/Revisions/
-  Actuals_Q/Px/Macro; 상세 스키마는 bbg-sync SKILL §6). 없으면 기존 소스. BEst/CEst **레벨 절대치는 이상치 QC 후** 사용(bbg-sync §4a).
+- **Bloomberg 덤프 재사용**: 종목의 재무·컨센·가이던스·리비전을 다루는 분석 스킬은 시작 시 최신 `*_bbg_*.xlsx`
+  (bbg-sync 덤프)를 **1차 소스로 확인·활용**한다(시트 Meta/Consensus/Guidance/Recs/Revisions/
+  Actuals_Q/Px/Macro; 상세 스키마는 bbg-sync SKILL §6). **위치**: Drive 검색 `title contains '{코드}JTEquity_bbg_'`
+  (한국 `KSEquity`)로 찾아 파일명 날짜 최신본 사용 — 보통 `Bloomberg_Inbox/dumps/`(BBG PC 자동 동기화, 주 1회 월요일
+  갱신), 예전 인제스트분은 `[종목]/Model/`. 파일명 날짜를 데이터 기준일로 명시. 없으면 기존 소스.
+  BEst/CEst **레벨 절대치는 이상치 QC 후** 사용(bbg-sync §4a).
 
 ## 3. 파일명·폴더명
 - 산출물 파일명은 ASCII (NFC/NFD 이슈 회피). 한글/일문 표시명이 필요하면 Drive 표시명에서만.

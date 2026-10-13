@@ -8,14 +8,22 @@ bbg_dump.py — Bloomberg 터미널 PC용 일일 데이터 덤프 (Layer 1, A안
 설치: pip install blpapi --index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/
      pip install xbbg pandas openpyxl "pyarrow>=22.0"
 주의: xbbg 1.x(rust)는 polars DataFrame을 반환 → to_pd()로 pandas 정규화 (pyarrow>=22.0 필수).
-스케줄: Windows 작업 스케줄러 평일 12:00 (터미널 로그인 9~10시 이후에 실행돼야 데이터 수신)
-  schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "bbg_dump" /ST 12:00 ^
+스케줄(v261013): 작업 스케줄러는 기존 그대로 평일 07:50 매일 호출. 스크립트가 스스로 판단해
+  **주 1회 전체 배치**만 실행 — 월요일(=직전 금요일 종가 기준) 또는 마지막 성공 배치 후 7일 이상이면
+  실행(공휴일·PC 꺼짐 다음 날 자동 캐치업), 아니면 즉시 종료. 강제 실행은 --force.
+  schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "bbg_dump" /ST 07:50 ^
     /TR "py -3 C:\\Bloomberg_Inbox\\bbg_dump.py"
-입력:  C:\\Bloomberg_Inbox\\watchlist.csv   (컬럼: ticker,name,sector_pack)
+모드:  (인자 없음) 주간 배치(due일 때만) / --force 즉시 배치 / "7203 JT Equity" 단건(워처·수동)
+       --prune [--dry-run] 덤프 보관정리(티커별 최신 + 월말 + 최근 14일만 남김, 5.5KB 빈 덤프 삭제)
+입력:  C:\\Bloomberg_Inbox\\watchlist.csv   (컬럼: ticker,name,sector_pack — 시트 Apps Script가 자동 갱신)
        C:\\Bloomberg_Inbox\\macro_map.csv   (컬럼: sector_pack,bbg_ticker,label)
-출력:  C:\\Bloomberg_Inbox\\dumps\\[티커]_bbg_[YYYYMMDD].xlsx
+출력:  C:\\Bloomberg_Inbox\\dumps\\[티커]_bbg_[YYYYMMDD].xlsx  ('내 컴퓨터' 동기화로 Drive에 자동 업로드)
        시트: Meta / Consensus / Guidance / Recs / Revisions / Actuals_Q / Px / Macro
-실패:  티커 단위로 계속 진행, _error 시트에 기록 (전체 중단 금지)
+       C:\\Bloomberg_Inbox\\_bbg_status.json (배치 결과 — 시트 Apps Script bbgHealthCheck가 감시)
+       C:\\Bloomberg_Inbox\\bbg_dump.log
+실패:  티커 단위로 계속 진행, _error 시트에 기록. 단 터미널 미접속(probe 실패)이면 10분 간격 최대 3시간
+       재시도 후 배치 중단(빈 파일 미생성). 데이터가 전무한 덤프(_error만)는 파일을 쓰지 않음.
+       연속 3종목 무데이터면 재-probe → 실패 시 중단(다음 날 캐치업).
 필드 한도: reference 요청당 400필드 / history 요청당 25필드 (공식 한도) — 청크 분할 처리.
 주의: Desktop API 데이터는 사내 이용 범위만. 외부 재배포 금지.
 FLDS 실측 결과 (2026-07-22, 285A/4443 JT):
@@ -28,14 +36,28 @@ FLDS 실측 결과 (2026-07-22, 285A/4443 JT):
     信用残은 표준 필드 미확인(TODO: FLDS 'margin trading'/'shintori' 재검색).
 """
 import csv
+import json
+import re
 import sys
+import time
 import traceback
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import pandas as pd
 INBOX = Path(r"C:\Bloomberg_Inbox")
 DUMPS = INBOX / "dumps"
 TODAY = date.today().strftime("%Y%m%d")
+STATUS = INBOX / "_bbg_status.json"
+LOG = INBOX / "bbg_dump.log"
+# ---- 배치 주기·가드 ---------------------------------------------------------
+BATCH_WEEKDAY = 0            # 0=월요일: 직전 금요일 종가·주말 컨센 반영분을 주 1회 스냅샷
+CATCHUP_DAYS = 7             # 마지막 성공 배치 후 7일 이상이면 요일 무관 실행(캐치업)
+PROBE_TICKER = "1306 JT Equity"
+PROBE_WAIT_SEC = 600         # 터미널 미접속 시 재시도 간격
+PROBE_WINDOW_SEC = 3 * 3600  # 재시도 총 허용 시간
+MAX_CONSEC_EMPTY = 3         # 연속 무데이터 종목 수 → 재-probe
+EMPTY_FILE_BYTES = 8000      # 이보다 작은 덤프 = _error만 있는 빈 파일(정리 대상)
+PRUNE_RECENT_DAYS = 14
 # ---- 필드 정의 -------------------------------------------------------------
 META_FLDS = ["NAME", "GICS_SECTOR_NAME", "CRNCY", "CUR_MKT_CAP", "EQY_SH_OUT",
              "EXPECTED_REPORT_DT", "LATEST_ANNOUNCEMENT_DT",
@@ -146,30 +168,178 @@ def dump_ticker(blp, tkr, sector_pack, macro_rows):
     if errors:
         out["_error"] = pd.DataFrame(errors)
     return out
-def main():
-    from xbbg import blp  # import 지연: blpapi 미설치 시 명확한 에러
-    DUMPS.mkdir(parents=True, exist_ok=True)
-    watch = load_csv(INBOX / "watchlist.csv")
-    macro_rows = load_csv(INBOX / "macro_map.csv") if (INBOX / "macro_map.csv").exists() else []
-    for row in watch:
-        tkr = row["ticker"].strip()
-        if not tkr:
+def log(msg):
+    line = f"{datetime.now():%Y-%m-%d %H:%M:%S} {msg}"
+    print(line)
+    try:
+        if LOG.exists() and LOG.stat().st_size > 1_000_000:   # 1MB 넘으면 최근 3000줄만 유지
+            tail = LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-3000:]
+            LOG.write_text("\n".join(tail) + "\n", encoding="utf-8")
+        with open(LOG, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:  # noqa: BLE001
+        pass
+def load_status():
+    try:
+        return json.loads(STATUS.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+def save_status(st):
+    try:
+        STATUS.write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log(f"[WARN] status 저장 실패: {e!r}")
+def batch_due(st, today=None):
+    """주간 배치 실행 여부: 오늘 이미 성공했으면 X / 월요일이면 O / 마지막 성공 후 7일 이상이면 O(캐치업)."""
+    today = today or date.today()
+    last = st.get("last_full_batch")
+    if last == today.isoformat():
+        return False
+    if today.weekday() == BATCH_WEEKDAY:
+        return True
+    if not last:
+        return True
+    try:
+        return (today - date.fromisoformat(last)).days >= CATCHUP_DAYS
+    except ValueError:
+        return True
+def probe(blp):
+    try:
+        return not to_pd(blp.bdp(PROBE_TICKER, ["PX_LAST"])).empty
+    except Exception:  # noqa: BLE001
+        return False
+def wait_for_terminal(blp):
+    t0 = time.time()
+    while True:
+        if probe(blp):
+            return True
+        if time.time() - t0 + PROBE_WAIT_SEC > PROBE_WINDOW_SEC:
+            return False
+        log(f"[WAIT] 터미널 미접속 — {PROBE_WAIT_SEC // 60}분 후 재시도")
+        time.sleep(PROBE_WAIT_SEC)
+def is_empty_dump(sheets):
+    """_error 외에 실제 데이터가 하나도 없으면 True (터미널 끊김·무효 티커)."""
+    return all(name == "_error" or to_pd(df).empty for name, df in sheets.items())
+def write_dump(blp, tkr, sector_pack, macro_rows):
+    """한 종목 덤프 → 저장. 반환: 'ok' | 'ok_err' | 'empty' | 'fail'."""
+    safe = tkr.replace(" ", "").replace("/", "")
+    dest = DUMPS / f"{safe}_bbg_{TODAY}.xlsx"
+    try:
+        sheets = dump_ticker(blp, tkr, sector_pack, macro_rows)
+        if not sheets or is_empty_dump(sheets):
+            errs = sheets.get("_error") if sheets else None
+            first = (to_pd(errs).iloc[0]["error"][:120] if errs is not None and not to_pd(errs).empty else "")
+            log(f"[EMPTY] {tkr} — 데이터 없음, 파일 미생성 {first}")
+            return "empty"
+        with pd.ExcelWriter(dest, engine="openpyxl") as xw:
+            for name, df in sheets.items():
+                to_pd(df).to_excel(xw, sheet_name=name[:31])
+        log(f"[OK] {tkr} -> {dest.name}" + (" (with _error)" if "_error" in sheets else ""))
+        return "ok_err" if "_error" in sheets else "ok"
+    except Exception:  # noqa: BLE001 — 전체 중단 금지
+        log(f"[FAIL] {tkr}\n{traceback.format_exc()}")
+        return "fail"
+def resolve_sector_pack(tkr):
+    """단건 모드: watchlist.csv → sector_pack_map.csv 순으로 sector_pack 조회. 없으면 ''(Macro만 빔)."""
+    code = tkr.split()[0] if tkr else ""
+    for fname in ("watchlist.csv", "sector_pack_map.csv"):
+        p = INBOX / fname
+        if not p.exists():
             continue
-        safe = tkr.replace(" ", "").replace("/", "")
-        dest = DUMPS / f"{safe}_bbg_{TODAY}.xlsx"
         try:
-            sheets = dump_ticker(blp, tkr, row.get("sector_pack", ""), macro_rows)
-            if not sheets:
-                print(f"[EMPTY] {tkr} — no data, skip write")
-                continue
-            with pd.ExcelWriter(dest, engine="openpyxl") as xw:
-                for name, df in sheets.items():
-                    to_pd(df).to_excel(xw, sheet_name=name[:31])
-            print(f"[OK] {tkr} -> {dest.name}"
-                  + (" (with _error)" if "_error" in sheets else ""))
+            for r in load_csv(p):
+                t = (r.get("ticker") or "").strip()
+                if t and t.split()[0] == code:
+                    return (r.get("sector_pack") or "").strip()
         except Exception:  # noqa: BLE001
-            print(f"[FAIL] {tkr}")
-            traceback.print_exc()
-            # 전체 중단 금지 — 다음 티커 계속
+            pass
+    return ""
+def prune(dry_run=True, today=None):
+    """dumps/ 보관정리: 티커별 최신 1개 + 월말(그 달 마지막) 1개 + 최근 14일 보존, 빈 덤프(<8KB)는 삭제."""
+    today = today or date.today()
+    pat = re.compile(r"^(.+)_bbg_(\d{8})\.xlsx$")
+    by_tkr = {}
+    for p in DUMPS.glob("*_bbg_*.xlsx"):
+        m = pat.match(p.name)
+        if m:
+            by_tkr.setdefault(m.group(1), []).append((m.group(2), p))
+    keep, drop = set(), []
+    for tkr, items in by_tkr.items():
+        good = [(d, p) for d, p in items if p.stat().st_size >= EMPTY_FILE_BYTES]
+        if good:
+            keep.add(max(good)[1])
+            month_last = {}
+            for d, p in good:
+                if d > month_last.get(d[:6], ("",))[0]:
+                    month_last[d[:6]] = (d, p)
+            keep.update(p for _, p in month_last.values())
+            cutoff = (today - timedelta(days=PRUNE_RECENT_DAYS)).strftime("%Y%m%d")
+            keep.update(p for d, p in good if d >= cutoff)
+        drop += [p for _, p in items if p not in keep]
+    log(f"[PRUNE] {'dry-run ' if dry_run else ''}보존 {len(keep)} / 삭제 {len(drop)}")
+    if not dry_run:
+        for p in drop:
+            try:
+                p.unlink()
+            except Exception as e:  # noqa: BLE001
+                log(f"[PRUNE-ERR] {p.name} {e!r}")
+    return keep, drop
+def main():
+    args = [a for a in sys.argv[1:] if a.strip()]
+    flags = {a.strip().lower() for a in args if a.strip().startswith("--")}
+    tkr_arg = " ".join(a for a in args if not a.strip().startswith("--")).strip()
+    DUMPS.mkdir(parents=True, exist_ok=True)
+    if "--prune" in flags:
+        prune(dry_run="--dry-run" in flags)
+        return 0
+    if not tkr_arg and "--force" not in flags:
+        st = load_status()
+        if not batch_due(st):
+            print(f"[SKIP] 주간 배치 대상일 아님 (마지막 성공 {st.get('last_full_batch')})")
+            return 0
+    from xbbg import blp  # import 지연: blpapi 미설치 시 명확한 에러
+    macro_rows = load_csv(INBOX / "macro_map.csv") if (INBOX / "macro_map.csv").exists() else []
+    if tkr_arg:   # 단건 모드 (bbg_request_watcher.py·dump_one.bat)
+        log(f"[MODE] 단건 {tkr_arg}")
+        r = write_dump(blp, tkr_arg, resolve_sector_pack(tkr_arg), macro_rows)
+        return 0 if r in ("ok", "ok_err") else 1
+    watch = [r for r in load_csv(INBOX / "watchlist.csv") if (r.get("ticker") or "").strip()]
+    st = load_status()
+    st.update(last_attempt=datetime.now().isoformat(timespec="seconds"),
+              watchlist_n=len(watch),
+              watchlist_mtime=datetime.fromtimestamp((INBOX / "watchlist.csv").stat().st_mtime)
+              .isoformat(timespec="seconds"))
+    log(f"[MODE] 주간 배치 {len(watch)}종목")
+    if not wait_for_terminal(blp):
+        st.update(result="terminal_down", ok=0, empty=[], failed=[])
+        save_status(st)
+        log("[ABORT] 터미널 미접속 3시간 — 배치 중단, 다음 평일 캐치업")
+        return 2
+    counts, empty, failed, consec, aborted = {"ok": 0, "ok_err": 0}, [], [], 0, False
+    for i, row in enumerate(watch):
+        tkr = row["ticker"].strip()
+        r = write_dump(blp, tkr, row.get("sector_pack", ""), macro_rows)
+        if r in counts:
+            counts[r] += 1
+            consec = 0
+            continue
+        (empty if r == "empty" else failed).append(tkr)
+        consec += 1
+        if consec >= MAX_CONSEC_EMPTY:
+            if wait_for_terminal(blp):
+                consec = 0
+            else:
+                aborted = True
+                failed += [w["ticker"].strip() for w in watch[i + 1:]]
+                log("[ABORT] 배치 도중 터미널 끊김 — 중단, 다음 평일 캐치업")
+                break
+    st.update(result="aborted" if aborted else "ok", ok=counts["ok"] + counts["ok_err"],
+              ok_with_error_sheet=counts["ok_err"], empty=empty, failed=failed,
+              finished=datetime.now().isoformat(timespec="seconds"))
+    if not aborted:
+        st["last_full_batch"] = date.today().isoformat()
+    save_status(st)
+    log(f"[DONE] ok {st['ok']} / empty {len(empty)} / fail {len(failed)}" + (" (aborted)" if aborted else ""))
+    return 0 if not aborted else 2
 if __name__ == "__main__":
     sys.exit(main())

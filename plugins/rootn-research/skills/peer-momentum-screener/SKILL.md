@@ -1,6 +1,6 @@
 ---
 name: peer-momentum-screener
-version: 260805
+version: 261013
 description: >-
   기준 종목 1개와 피어 유니버스를 비교해 "지금 사기에 기준 종목만큼 좋거나 더 좋은 종목"을 찾는 스크리닝 스킬. 과거 실적은 노출·마진 개선의 검증용으로만
   쓰고, 종목 선정은 각 섹터/종목에 맞는 핵심 선행지표(예: 건설·설비=분기 net 수주, 장비=수주/Book-to-Bill, 소비재=기존점 매출,
@@ -47,7 +47,7 @@ description: >-
 
 ## Step 2. 드라이브 기존 자료 재사용 (재수집 금지)
 
-- **BEst 덤프 최우선**: 각 종목 `Model/`의 `*_bbg_*.xlsx`(`bbg-sync` 인제스트분)가 있으면
+- **BEst 덤프 최우선**: 각 종목 `*_bbg_*.xlsx`(공통규칙 §2 위치, 주 1회 갱신)가 있으면
   **Revisions 시트(BEst EPS/Sales FY1·FY2 주간 시계열)가 growth delta의 1차 소스**다 —
   컨센 리비전 가속/감속을 이 시계열로 직접 판정한다. Macro 시트(섹터 선행지표 팩)는
   선행지표모멘텀 시트의 1차 입력. 덤프가 없으면 `리서치/consensus/`의 CapIQ estimates

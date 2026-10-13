@@ -1,6 +1,6 @@
 ---
 name: bbg-sync
-version: 260724
+version: 261013
 description: >-
   블룸버그 PC의 로컬 인박스(C:\Bloomberg_Inbox\)에 떨어진 Bloomberg 산출물(blpapi 덤프 xlsx,
   RES 셀사이드 PDF, BI 리포트, 모델 export)을 데스크톱 앱 파일 브리지로 스캔해 구글 드라이브
@@ -9,7 +9,9 @@ description: >-
   다운로드가 담당하고, 이 스킬은 Layer 2(집어가기)를 담당한다. "인박스 싱크", "블룸버그 싱크",
   "BBG 싱크", "Bloomberg_Inbox 정리", "블룸버그 덤프 올려줘", "BBG 파일 드라이브로" 등의 키워드,
   또는 ir-research-pipeline이 Bloomberg 자산 점검 단계에서 호출할 때 이 스킬을 사용할 것.
-  종목 모드(특정 티커만)와 전체 모드(인박스 전량) 지원. RootN 리서처 전용. (v260721, 설계 v260715 재구현)
+  종목 모드(특정 티커만)와 전체 모드(인박스 전량) 지원. 덤프 유니버스·주기·헬스체크 운영 질문
+  ("BBG 덤프 종목", "덤프 주기", "watchlist.csv")에도 사용. RootN 리서처 전용.
+  (v261013: 덤프 주 1회 + 실적 후 단건, Drive 자동동기화, 시트 Apps Script가 유니버스 관리)
 ---
 
 # bbg-sync — Bloomberg_Inbox → Drive 인제스트
@@ -18,6 +20,18 @@ description: >-
 > 아키텍처 전제: 클라우드 Claude는 Bloomberg 터미널·엑셀을 원격 조작할 수 없다. 자동화 경계선은
 > **"블룸버그 PC의 지정 폴더에 파일이 떨어진 이후"**부터다. 파일을 떨어뜨리는 장치(Layer 1)는
 > `scripts/bbg_dump.py` + 수동 다운로드이고, 이 스킬은 떨어진 파일을 집어가는 장치(Layer 2)다.
+
+> **현행 운영 (v261013)** — 브리지 없이도 도는 구조:
+> - **Layer 0 (유니버스)**: 시트 Apps Script `assets/BbgUniverseSync_v1.gs`가 매일 06시 `타깃 ∪ Watchlist`를
+>   Drive `내 컴퓨터 (1)/Bloomberg_Inbox/watchlist.csv`(folder id `1S_6f3qBxEoMz2hBRl-U62ljf50fgXbKf`)에 기록 →
+>   Drive for desktop이 BBG PC `C:\Bloomberg_Inbox\`로 동기화. 설치는 `assets/INSTALL_BbgUniverseSync_v1.md`.
+> - **Layer 1 (덤프)**: `bbg_dump.py`가 **주 1회(월 07:50, 직전 금요일 종가 기준)** 전체 배치 + 놓치면 다음 평일 캐치업.
+>   실적 발표 D+2~5 종목은 Apps Script가 `requests/*.req`를 넣어 워처가 단건 덤프. 노트 작업 시 온디맨드 단건.
+> - **Drive 반영**: `C:\Bloomberg_Inbox` 전체가 '내 컴퓨터' 동기화 대상이라 덤프는 **자동으로 Drive
+>   `Bloomberg_Inbox/dumps/`에 올라간다** → 소비 스킬은 이 위치를 1차로 본다(§6). 이 스킬의 Model/ 인제스트(§2)는
+>   PDF·수동 다운로드 정리나 종목 폴더 사본이 필요할 때만 쓴다.
+> - **감시**: 배치 결과는 `_bbg_status.json`·`bbg_dump.log`(Drive에서 읽힘) → Apps Script `bbgHealthCheck`(매일 12시)가
+>   실패·9일+ 지연·watchlist 미반영을 텔레 알림. 상태 질문엔 이 두 파일을 Drive에서 읽어 답한다.
 
 ## 0. 전제 조건
 
@@ -72,25 +86,31 @@ C:\Bloomberg_Inbox\
 - **Guidance 시트가 비어 있는 것은 실패 아님**: CEst 미제공 종목(예: 4443)은 정상. avail=Y인데 값이
   전무한 경우도 종목 특성이므로 flagging하지 않는다(Consensus까지 비면 그때 덤프 실패로 판단).
 
-### 2-6. watchlist 소스·갱신 (Google Sheet → watchlist.csv, 일 1회 diff)
+### 2-6. watchlist 소스·갱신 (시트 Apps Script가 자동 — Claude 세션 불필요)
 - **소스 오브 트루스 = Google Sheet**(RootN JP 모델포트, id `1cEYe8SgSXRO5DlGp8zRMiHaTBx6znUrcdE2yBrl5JcA`):
-  **`타깃` 탭(≈`모델포트 1`) + `watchlist` 탭의 합집합(중복 제거)**. 두 탭 gid는 시트에서 확인.
-- **동작(브리지가 BBG PC에 연결된 세션에서만)**: 두 탭 읽기 → 각 종목을 `ticker,name,sector_pack`로 변환
-  (ticker는 BBG 형식 `NNNN JT Equity`/`NNNNNN KS Equity`/`AAPL US Equity`; sector_pack 배정) →
-  현재 `C:\Bloomberg_Inbox\watchlist.csv`와 **diff** → 추가/삭제/섹터변경을 `C:\Bloomberg_Inbox\_watchlist_log.md`에
-  날짜와 함께 append + 사용자 보고 → 새 watchlist.csv 저장.
-- **주기·제약**: 일 1회면 충분(모델포트 변동 드묾), **12:00 덤프 이전**에 갱신돼야 그날 반영.
-  - **bbg_dump.py는 시트를 못 읽는다**(사설 시트 인증 불가) → 이 갱신은 **반드시 Claude 세션**이 수행(Windows 스케줄러 아님).
-  - 자동화: BBG PC 브리지 세션에서 예약 작업(create_trigger) 평일 11:45. ★헤드리스 실행 시 **BBG 데스크톱 앱이 켜져 연결**돼
-    있어야 브리지·Google 커넥터가 살아있음 — 불안정하면 수동/리마인더로 대체하고 보고에 명시(fail-fast).
+  **`타깃` 탭 + `Watchlist` 탭의 합집합(중복 제거, 타깃 순서 우선)**. 청산 종목은 두 탭에서 빠지면 자동 제외.
+- **동작**: `BbgUniverseSync_v1.gs`의 `bbgSyncUniverse()`가 매일 06시 Drive의 watchlist.csv를 `setContent`로 갱신
+  (변경 있을 때만, 기존 name·sector_pack 보존, 신규는 `jp_review` → 텔레로 추가/제외/미지정 보고).
+  Drive 리비전이 이력. 구 `watchlist_sync.py`(PC 서비스계정 방식)는 **폐기**.
+- **수동 보정**: sector_pack은 macro_map 매핑용(실데이터 영향은 `jp_machinery` 등 macro_map에 티커가 있는 팩만).
+  바꾸려면 Drive watchlist.csv 해당 행의 3번째 열만 고치면 다음 동기화에서 보존된다. 덤프 제외는 `BBG.EXCLUDE`.
+- **동기화 실패 감지**: PC가 읽은 종목 수(`_bbg_status.json`의 `watchlist_n`) ≠ Drive 행 수면 `bbgHealthCheck`가 경보 →
+  BBG PC에서 파일 수동 교체.
+- **Claude 세션에서 즉시 반영이 필요할 때**(시트 대량 변경 직후 등): Drive 커넥터는 내용 덮어쓰기 불가 → 기존 파일을
+  `watchlist_YYYYMMDD_bak.csv`로 rename 후 새 `watchlist.csv` 생성(같은 폴더). 다음 Apps Script 실행이 새 파일을 이어서 관리.
 
 ## 3. Layer 1 참고 (이 스킬이 실행하지 않는 것)
 
 - `scripts/bbg_dump.py` — 블룸버그 PC **Windows 네이티브 Python**에서 실행 (Linux VM 불가:
-  blpapi가 localhost:8194 터미널 연결 필요). Windows 작업 스케줄러 평일 12:00 1회
-  (터미널 로그인 9~10시 이후에 돌아야 데이터 수신 — 그 이전 시각은 빈 덤프).
+  blpapi가 localhost:8194 터미널 연결 필요). 작업 스케줄러는 **평일 07:50 매일 호출**하되 스크립트가
+  주 1회만 배치(월요일 또는 마지막 성공 후 7일+ 캐치업), 그 외 즉시 종료. 터미널 미접속이면 10분 간격 최대 3시간
+  probe 후 중단(빈 파일 미생성), 데이터 전무 덤프는 쓰지 않음. 모드: 무인자(주간) / `--force` / 단건 티커 /
+  `--prune [--dry-run]`(티커별 최신+월말+최근 14일만 보존). 결과 `_bbg_status.json`·`bbg_dump.log`.
   입력 `watchlist.csv`, 출력 `dumps/[티커]_bbg_[YYYYMMDD].xlsx`. 셋업 절차는
-  `references/bloomberg-pc-setup.md`.
+  `references/bloomberg-pc-setup.md`. **배포 경로**: SSOT 수정 → Drive `Bloomberg_Inbox/bbg_dump.py`로 올리면
+  (rename 백업 후 새 파일 생성) PC에 동기화된다.
+- `bbg_request_watcher.py`(PC, 1분 폴링): `requests/*.req` 첫 줄 티커로 단건 덤프 → `requests/done/`.
+  성공 후 `bbg_drive_upload.py`를 부르지만 자격증명 미설정이라 실패 로그만 남음(무해 — Drive 반영은 동기화가 담당).
 - **B안 fallback**: blpapi 설치·접속 불가 시 기존 _Q/_A 템플릿에 BEst 시트를 추가한
   확장 템플릿(수동 refresh+저장)으로 전환. 이 경우에도 인제스트 경로는 동일.
 - Desktop API 데이터는 **사내 이용 범위만** (외부 공유·재배포 금지) — 산출물 공유 시 주의 문구.
@@ -126,8 +146,11 @@ f. 결산발표 캘린더
 ## 6. 덤프 소비자 계약 (다른 스킬이 bbg 덤프를 읽는 법)
 
 > 종목 재무·컨센을 다루는 분석 스킬(investment-note·financial-model-builder·comparative-investment-note·
-> peer-momentum-screener·ir-research-pipeline)은 Drive `[종목]/Model/`의 **최신 `*_bbg_*.xlsx`**를
-> 컨센·가이던스·리비전·주가 **1차 소스**로 사용한다(공통규칙에도 훅). 시트 스키마:
+> peer-momentum-screener·ir-research-pipeline)은 **최신 `*_bbg_*.xlsx`**를 컨센·가이던스·리비전·주가
+> **1차 소스**로 사용한다(공통규칙 §2 훅). **찾는 법**: Drive 검색 `title contains '{코드}JTEquity_bbg_'`
+> (한국 `{코드}KSEquity_bbg_`) → 파일명 날짜가 가장 최근인 것. 위치는 보통 `Bloomberg_Inbox/dumps/`(자동 동기화),
+> 예전 인제스트분은 `[종목]/Model/`. 주 1회 갱신이므로 **파일명 날짜를 데이터 기준일로 명시**하고, 7일 넘게 지났거나
+> 실적 발표 이후라면 BBG PC에 단건 요청(`requests/{코드}_JT_Equity.req`, 첫 줄 `{코드} JT Equity`)을 제안한다. 시트 스키마:
 
 - **Meta**(전치): NAME·GICS_SECTOR·CRNCY·CUR_MKT_CAP·EQY_SH_OUT·실적발표예정일 + 외국인보유(BS140·DY186).
 - **Consensus**(long: ticker/field/value/period): BEST_SALES·OPP·NET_INCOME·EPS(+HI/LO)·BEST_ANALYST_RATING·

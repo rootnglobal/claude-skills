@@ -65,20 +65,21 @@ py -3 C:\Bloomberg_Inbox\bbg_dump.py
 - `dumps\`에 `[티커]_bbg_[YYYYMMDD].xlsx` 생성 확인
 - `_error` 시트가 있는 티커는 사유 확인 (필드 미가용·티커 오타·entitlement)
 
-## 6. 작업 스케줄러 등록 (평일 12:00)
+## 6. 작업 스케줄러 등록 (평일 07:50 호출 · 주 1회 배치 — v261013)
 
-> **시각 근거**: 스크립트는 터미널 로그인 상태에서만 데이터를 받는다. 터미널 로그인이 보통 오전 9~10시라
-> **로그인 이전 시각(07:50)에 돌면 빈 덤프/실패**가 난다. 로그인 이후로 잡아 **평일 12:00**(권장 창 11:30~13:00)에 실행.
-
-```
-schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "bbg_dump" /ST 12:00 /TR "py -3 C:\Bloomberg_Inbox\bbg_dump.py"
-```
-
-이미 등록돼 있으면 **시각만 변경**(삭제·재생성 불필요):
+> **현행**: 스케줄러는 평일 매일 07:50 호출, 스크립트가 스스로 주 1회(월요일, 놓치면 다음 평일 캐치업)만 배치한다.
+> 터미널 미로그인이면 10분 간격 최대 3시간 재시도 후 중단(빈 파일 미생성) — 07:50 고정이어도 안전.
+> (구 버전은 매일 배치였고, 2026-10-12 공휴일에 미로그인 상태로 종목당 ~13분 타임아웃·5.5KB 빈 파일이 남았음)
 
 ```
-schtasks /Change /TN "bbg_dump" /ST 12:00
+schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "bbg_dump" /ST 07:50 /TR "py -3 C:\Bloomberg_Inbox\bbg_dump.py"
 ```
+
+- 강제 즉시 배치: `py -3 C:\Bloomberg_Inbox\bbg_dump.py --force`
+- 단건: `py -3 C:\Bloomberg_Inbox\bbg_dump.py "7203 JT Equity"` (워처·dump_one.bat이 사용)
+- 보관 정리: `... bbg_dump.py --prune --dry-run` 확인 후 `--prune` (티커별 최신+월말+최근 14일 보존, 5.5KB 빈 덤프 삭제)
+- `C:\Bloomberg_Inbox`는 Drive for desktop '내 컴퓨터' 동기화 대상 → 덤프·로그·상태파일이 Drive에 자동 반영되고,
+  Drive에서 바뀐 `watchlist.csv`·`bbg_dump.py`·`requests/*.req`가 PC로 내려온다(역방향 동기화 필수).
 
 ## 7. B안 fallback (blpapi 불가 시)
 

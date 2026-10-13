@@ -1,6 +1,6 @@
 ---
 name: ir-research-pipeline
-version: 260721b
+version: 261013
 description: >
   종목 하나에 대한 IR 리서치 전 과정을 한 번에 끝내는 오케스트레이터 스킬.
   (1) IR 자료 수집(공식 IR·공시·DART/SEC/EDINET/CNINFO) + Gmail에서 IR이 보낸
@@ -61,8 +61,8 @@ RootN 리서처용. **종목 하나를 받아 IR 리서치 전 과정을 한 번
 2. **기존 드라이브 자산 점검**: Google Drive에서 `Investment Research/[종목명...]` 폴더가
    이미 있는지 `search_files`로 확인한다. 있으면 그 폴더를 재사용(중복 수집 방지),
    없으면 1단계에서 새로 만든다.
-3. **Bloomberg 자산 자동 점검 (묻기 전에 먼저 확인)**: (a) Drive 종목 폴더 `Model/`에
-   기존 BBG 템플릿(_Q/_A.xlsx)·덤프(`*_bbg_*.xlsx`)가 있는지, (b) 데스크톱 브리지가 살아
+3. **Bloomberg 자산 자동 점검 (묻기 전에 먼저 확인)**: (a) Drive 종목 폴더 `Model/`의
+   BBG 템플릿(_Q/_A.xlsx)과 덤프(`*_bbg_*.xlsx`, 공통규칙 §2 위치 — 보통 `Bloomberg_Inbox/dumps/`)가 있는지, (b) 데스크톱 브리지가 살아
    있으면 `bbg-sync` 종목 모드로 `Bloomberg_Inbox/`에 해당 티커 신규 파일이 있는지 확인해
    인제스트한다. 둘 다 없을 때만 4번 질문에 포함한다.
 4. **추가 자료 1회 확인 (AskUserQuestion)**: 본격 작업 전에 **한 번만** 묻는다.
