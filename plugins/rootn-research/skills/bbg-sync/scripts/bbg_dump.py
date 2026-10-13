@@ -285,9 +285,10 @@ def prune(dry_run=True, today=None):
                 log(f"[PRUNE-ERR] {p.name} {e!r}")
     return keep, drop
 def main():
-    args = [a for a in sys.argv[1:] if a.strip()]
-    flags = {a.strip().lower() for a in args if a.strip().startswith("--")}
-    tkr_arg = " ".join(a for a in args if not a.strip().startswith("--")).strip()
+    # 워처는 .req 첫 줄을 인자 1개로 넘긴다("--prune --dry-run"도 한 덩어리) → 공백 단위로 다시 쪼갠다
+    args = " ".join(sys.argv[1:]).split()
+    flags = {a.lower() for a in args if a.startswith("--")}
+    tkr_arg = " ".join(a for a in args if not a.startswith("--")).strip()
     DUMPS.mkdir(parents=True, exist_ok=True)
     if "--prune" in flags:
         prune(dry_run="--dry-run" in flags)
