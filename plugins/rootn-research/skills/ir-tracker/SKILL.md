@@ -1,6 +1,6 @@
 ---
 name: ir-tracker
-version: 261021
+version: 261021b
 description: "Gmail에서 IR 미팅 요청 발송 메일을 검색하여, 구글 시트(IR 미팅/콜 관리)의 '요청/진행사항' 탭을 자동으로 업데이트하는 스킬. 발송 이력, 답변 여부, 답변 내용 요약, 담당자 정보를 Gmail 스레드에서 추출하여 시트에 반영한다. 'IR 시트 업데이트', 'IR 트래커', 'IR 미팅 관리 시트', 'IR 현황 업데이트', 'IR 진행상황 정리', 'Gmail IR 메일 정리', 'IR 파이프라인 업데이트', 'IR 시트 동기화', 'IR 발송 내역 정리' 등의 키워드가 나오면 이 스킬을 사용할 것. IR 미팅 요청 메일을 보낸 뒤 시트를 최신 상태로 맞추고 싶을 때, 또는 정기적으로 IR 진행 상황을 시트에 반영하고 싶을 때 사용한다."
 ---
 
@@ -17,8 +17,9 @@ RootNGlobal/Root & Global이 IR 미팅 요청을 위해 발송한 이메일과 �
  
 ## 대상 구글 시트
  
-- **시트 URL**: `https://docs.google.com/spreadsheets/d/199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w/edit?gid=0#gid=0`
-- **시트 ID**: `199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w`
+- **시트 ID**: Drive `Investment Research/_config/sheet_ids.txt`의 `ir_tracker` 값(문서에 직접 기재하지 않는다).
+  파일·키가 없으면 Google Drive `search_files`로 title `IR 미팅/콜 관리` 스프레드시트를 찾아 ID를 확보한다. 이하 `{IR_SHEET_ID}`로 표기.
+- **시트 URL**: `https://docs.google.com/spreadsheets/d/{IR_SHEET_ID}/edit?gid=0#gid=0`
 - **탭 1**: `요청/진행사항` (gid=0) — IR 요청 진행 관리 메인 탭
 - **탭 2**: `연락처 리스트` (gid=331223742) — IR 담당자 연락처 DB
  
@@ -36,7 +37,7 @@ RootNGlobal/Root & Global이 IR 미팅 요청을 위해 발송한 이메일과 �
 | H: 다시연락한일자 | 실제 팔로업일 | Y/26-02-19 |
 | I: 미팅일자 | 확정된 미팅 일정 | 2026.03.15 (11:00 am) |
 | J: 기타 진행현황 | 자유 텍스트 메모 | 통역 섭외 완료, 답변 받음 |
-| K: 담당자 | IR 담당자 이름 | 유수진 |
+| K: 담당자 | IR 담당자 이름 | 김OO |
 | L: 담당부서/직함 | 부서/직함 | IR, IR Director |
 | M: 연락처 | 이메일/전화 | stock@gigavis.com |
 | N: 통역가 연락처 | 통역사 정보 | |
@@ -49,8 +50,8 @@ RootNGlobal/Root & Global이 IR 미팅 요청을 위해 발송한 이메일과 �
 |------|------|------|
 | A: 섹터 | 산업 분류 | 반도체, 2차전지, 엔터, IP |
 | B: 회사명 | 회사명 | 매커스, SKC, 에스엠 |
-| C: 담당자 | 이름 + 직함 | 이경준 부장, IR팀, 유수진 선임 |
-| D: 연락처1 | 전화/이메일 | 02-3490-9514, sujin.you@smtown.com |
+| C: 담당자 | 이름 + 직함 | 홍길동 부장, IR팀, 김OO 선임 |
+| D: 연락처1 | 전화/이메일 | 02-XXXX-XXXX, (IR 이메일) |
 | E: 연락처2 | 보조 연락처 | 010-XXXX-XXXX |
 | F: 주소 | 회사 주소 | 서울시 강남구 테헤란로 626 |
 | G: 비고 | 참고사항 | 탐방가능, *연락가능 수신처 |
@@ -113,7 +114,7 @@ Chrome 브라우저로 구글 시트에 접속하여 현재 데이터를 읽는�
 ```javascript
 // JSON 형식이 CSV보다 안정적 (셀 내 줄바꿈 처리 가능)
 (async () => {
-  const sheetId = '199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w';
+  const sheetId = '{IR_SHEET_ID}';  // _config/sheet_ids.txt의 ir_tracker 값으로 치환
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=0&tq=SELECT A,B,C,D,E,F,G,H,I,J,K,L,M WHERE A IS NOT NULL`;
   const resp = await fetch(url);
   const text = await resp.text();
@@ -203,7 +204,7 @@ Google Sheets는 Canvas 기반 렌더링이라 DOM 조작이 불가능하다. �
  
 **시트 접속:**
 ```
-navigate → https://docs.google.com/spreadsheets/d/199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w/edit?gid=0#gid=0
+navigate → https://docs.google.com/spreadsheets/d/{IR_SHEET_ID}/edit?gid=0#gid=0
 ```
  
 **셀 편집 절차 (Name Box 패턴 — 가장 안정적):**
@@ -258,13 +259,13 @@ for (const tab of tabs) {
 ```
 또는 직접 navigate:
 ```
-navigate → https://docs.google.com/spreadsheets/d/199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w/edit?gid=331223742#gid=331223742
+navigate → https://docs.google.com/spreadsheets/d/{IR_SHEET_ID}/edit?gid=331223742#gid=331223742
 ```
  
 **연락처 리스트 탭 데이터 읽기:**
 ```javascript
 (async () => {
-  const sheetId = '199m_xcnD9oRwwUTiBYxPPBv_TOutjzD_Uxy1Hemhr2w';
+  const sheetId = '{IR_SHEET_ID}';  // _config/sheet_ids.txt의 ir_tracker 값으로 치환
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=331223742&tq=SELECT A,B,C,D,E WHERE B IS NOT NULL`;
   const resp = await fetch(url);
   const text = await resp.text();

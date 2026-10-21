@@ -1,6 +1,6 @@
 ---
 name: ir-collertor
-version: 260721
+version: 261021
 description: "IR 자료 수집 스킬 - 주식 종목명 또는 티커를 입력하면 최근 2년간의 IR(Investor Relations) 자료를 공식 IR 페이지와 공시 사이트(DART, SEC EDGAR, EDINET, CNINFO)에서 검색하여 수집하고, 구글 드라이브의 'Investment Research' 폴더 아래에 [종목명]/IR 구조로 정리해주는 스킬입니다. 이 스킬은 종목 리서치, IR 자료 수집, 투자자료 정리, 기업 공시 자료 모음, 어닝콜 자료, 사업보고서, Annual Report, Quarterly Report, 10-K, 10-Q, 유가증권보고서, 반기보고서, 분기보고서, 결산설명회 자료 등의 수집에 사용하세요. 한국(DART/KRX), 미국(SEC EDGAR), 일본(EDINET/TDnet), 중국(CNINFO/SSE/SZSE) 종목을 지원합니다. 사용자가 '티커', '종목', 'IR', '투자자료', '공시', '어닝콜', '실적발표' 등을 언급하면 이 스킬을 사용하세요."
 ---
 

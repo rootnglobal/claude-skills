@@ -1,6 +1,6 @@
 ---
 name: capiq-collector
-version: 260724
+version: 261021
 description: >-
   S&P Capital IQ(www.capitaliq.spglobal.com)에서 Claude in Chrome으로 종목 자료를 수집하는 스킬.
   수집 대상: (1) earnings call transcripts 최근 2년(Q&A 포함) → Drive IR/transcripts/,

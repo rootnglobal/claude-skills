@@ -11,13 +11,14 @@
  *                          새 배치 완료 시 1회 요약. 같은 경보는 1회만.
  *   bbgSetupTriggers()     위 3개 트리거 설치(기존 동일 핸들러 제거 후). 설치 후 1회 수동 실행.
  *
+ * 폴더 ID: Script Property BBG_INBOX_FOLDER_ID(Bloomberg_Inbox) · BBG_REQ_FOLDER_ID(Bloomberg_Inbox/requests) 필수 (v261021~, 코드에 ID 미기재).
  * 텔레그램: OrdersAPI_v1.gs의 ord_tg()가 있으면 그것을 사용, 없으면 Script Property TG_TOKEN/TG_CHAT_ID(또는 CONFIG).
  * 시간대: 프로젝트 시간대 Asia/Seoul 또는 Asia/Tokyo 전제(동일 UTC+9).
  */
 
 const BBG = {
-  INBOX_FOLDER_ID: '1S_6f3qBxEoMz2hBRl-U62ljf50fgXbKf',   // 내 컴퓨터 (1)/Bloomberg_Inbox
-  REQ_FOLDER_ID:   '1Mx4b4ezeVv6Bvg3Y2VBbBQFhGt_tnIRs',   // Bloomberg_Inbox/requests
+  get INBOX_FOLDER_ID() { return bbgProp_('BBG_INBOX_FOLDER_ID'); },   // 내 컴퓨터 (1)/Bloomberg_Inbox
+  get REQ_FOLDER_ID()   { return bbgProp_('BBG_REQ_FOLDER_ID'); },     // Bloomberg_Inbox/requests
   WL_NAME: 'watchlist.csv',
   STATUS_NAME: '_bbg_status.json',
   TABS: ['타깃', 'Watchlist'],                           // 순서 = 덤프 순서
@@ -29,6 +30,12 @@ const BBG = {
   POST_EARN_MIN: 2, POST_EARN_MAX: 5,                    // 실적 후 D+2~D+5 사이 1회
   STALE_DAYS: 9,                                         // 마지막 성공 배치가 이보다 오래되면 경보
 };
+
+function bbgProp_(key) {
+  const v = PropertiesService.getScriptProperties().getProperty(key);
+  if (!v) throw new Error('Script Property 없음: ' + key + ' (INSTALL_BbgUniverseSync_v1.md 1단계)');
+  return v;
+}
 
 /* ---------------- 1) 유니버스 동기화 ---------------- */
 

@@ -2,11 +2,15 @@
 
 jp_model_portfolio 시트 기준. 기존 Code.gs·OrdersAPI_v1.gs는 수정하지 않는다(별도 파일 추가).
 
-1. 시트 → 확장 프로그램 > Apps Script → 파일 + → 스크립트 `BbgUniverseSync_v1` 생성 → `BbgUniverseSync_v1.gs` 전체 붙여넣기 → 저장
+1. Apps Script 편집기 → 프로젝트 설정(⚙) → 스크립트 속성에 2개 추가 (v261021~ 필수, 코드에 ID를 넣지 않는다):
+   - `BBG_INBOX_FOLDER_ID` = Drive `내 컴퓨터 (1)/Bloomberg_Inbox` 폴더 ID
+   - `BBG_REQ_FOLDER_ID` = `Bloomberg_Inbox/requests` 폴더 ID
+   (폴더 ID = Drive에서 폴더를 연 뒤 URL의 `/folders/` 뒤 문자열. 이미 설치된 v261013 이하 코드를 이번 버전으로 교체할 때도 먼저 등록)
+2. 시트 → 확장 프로그램 > Apps Script → 파일 + → 스크립트 `BbgUniverseSync_v1` 생성 → `BbgUniverseSync_v1.gs` 전체 붙여넣기 → 저장
    (clasp 사용 시: 프로젝트 폴더에 파일 추가 후 `clasp push`)
-2. 프로젝트 설정에서 시간대가 Asia/Seoul(또는 Asia/Tokyo)인지 확인
-3. 편집기에서 `bbgSyncUniverse` 1회 실행 → 권한 승인(Drive). 로그에 "변경 없음 (63종목)" 또는 텔레 "유니버스 갱신" 알림이면 정상
-4. `bbgSetupTriggers` 1회 실행 → 텔레 "🔧 BBG 트리거 설치" 수신 확인
+3. 프로젝트 설정에서 시간대가 Asia/Seoul(또는 Asia/Tokyo)인지 확인
+4. 편집기에서 `bbgSyncUniverse` 1회 실행 → 권한 승인(Drive). 로그에 "변경 없음 (63종목)" 또는 텔레 "유니버스 갱신" 알림이면 정상
+5. `bbgSetupTriggers` 1회 실행 → 텔레 "🔧 BBG 트리거 설치" 수신 확인
 
 ## 확인 포인트
 - 텔레 알림은 OrdersAPI의 `ord_tg()`를 재사용(없으면 Script Property `TG_TOKEN`/`TG_CHAT_ID`).

@@ -93,15 +93,12 @@
   3) `copy_file(fileId, parentId=캐논폴더, **title=원하는 이름**)`로 캐논 위치에 배치.
      ★ **title 반드시 지정** — 생략 시 "Copy of ..." 접두사가 붙어 기존 clean 파일과 불일치·중복 유발.
   4) intake 원본은 아카이브로 두거나 사용자 확인 후 정리.
-- **캐논 folderId(2차 확정/신설)**:
-  - Investment Research = 1o2kvIP7Aj2Ezcv13zPhZgnjc-VpM2jvr
-  - Kioxia (285A) = 1u0q2dH6SK10RZSmTHCfpiOIwnhDyG9TU
-    · IR/transcripts = 153iqxzw4kdM-PqXyhIDelzbcm23BYbCp (기존)
-    · 리서치 = 1Ir53EB1IzOnheAsCT3xFoLh5xncOTY73 (신설) > consensus = 1lcFFWQCEzLjiUSHD4fU94gCxGMlTc0pI
-  - Sansan = 1yzi5uB3udhVvCHatcQz9X7-oomp1YDul
-    · IR = 11tfO9CUJpyaAxIeR6t-ZDbkwS_N7-Ka2 > transcripts = 1wHr4RQfEQiwPcyu0XYvnqbYFDUuaZVCR (신설)
-    · 리서치 = 1LwgrrzwI5SgFwFg7-EJeHd3g8ouLjKsk > consensus = 19bB6lOXaLSuAXh64N3ufofL4Jnmsy4oy (신설)
-    · Sell-side = 1LaYVAsCKh7HVPONhv5O1jyhrOhYpScLi (기존)
+- **캐논 folderId 확보(문서에 ID 직접 기재 금지)**:
+  - `Investment Research` 루트 = Drive `Investment Research/_config/drive_folders.txt`의 `investment_research` 값.
+    파일·키가 없으면 `search_files`로 title `Investment Research` 폴더를 찾는다.
+  - 종목·하위 폴더(`[종목명 (티커)]/IR/transcripts`, `리서치/consensus`, `리서치/Sell-side` 등)는 런타임에
+    `search_files`(title + `parentId`)로 한 단계씩 조회하고, 없으면 common-rules 폴더 규칙대로 신설한다.
+  - 2차 실측 때 확정·신설한 예: Kioxia (285A) → IR/transcripts, 리서치/consensus · Sansan → IR/transcripts, 리서치/consensus, Sell-side.
 
 ## 6. 셀사이드(Investment & Market Research) — 2차 실측
 - URL /company/investmentresearch?id=<MI_KEY>&type=1. Date Range 기본이 Last 2 Years로 잡혀 있기도 함(확인).

@@ -1,6 +1,6 @@
 ---
 name: bbg-sync
-version: 261021
+version: 261021b
 description: >-
   블룸버그 PC의 로컬 인박스(C:\Bloomberg_Inbox\)에 떨어진 Bloomberg 산출물(blpapi 덤프 xlsx,
   RES 셀사이드 PDF, BI 리포트, 모델 export)을 데스크톱 앱 파일 브리지로 스캔해 구글 드라이브
@@ -23,7 +23,7 @@ description: >-
 
 > **현행 운영 (v261013)** — 브리지 없이도 도는 구조:
 > - **Layer 0 (유니버스)**: 시트 Apps Script `assets/BbgUniverseSync_v1.gs`가 매일 06시 `타깃 ∪ Watchlist`를
->   Drive `내 컴퓨터 (1)/Bloomberg_Inbox/watchlist.csv`(folder id `1S_6f3qBxEoMz2hBRl-U62ljf50fgXbKf`)에 기록 →
+>   Drive `내 컴퓨터 (1)/Bloomberg_Inbox/watchlist.csv`(folder id는 Apps Script Script Property `BBG_INBOX_FOLDER_ID`)에 기록 →
 >   Drive for desktop이 BBG PC `C:\Bloomberg_Inbox\`로 동기화. 설치는 `assets/INSTALL_BbgUniverseSync_v1.md`.
 > - **Layer 1 (덤프)**: `bbg_dump.py`가 **주 1회(월 07:50, 직전 금요일 종가 기준)** 전체 배치 + 놓치면 다음 평일 캐치업.
 >   실적 발표 D+2~5 종목은 Apps Script가 `requests/*.req`를 넣어 워처가 단건 덤프. 노트 작업 시 온디맨드 단건.

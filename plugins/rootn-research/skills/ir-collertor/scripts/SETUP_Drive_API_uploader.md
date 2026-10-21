@@ -34,11 +34,11 @@ pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-
 
 ```bash
 # SUMCO IR 2건 → Wafer/Sumco 폴더
-python drive_uploader.py --folder 1ejl6F2qmjqvPHvKf6esMI2WqAP9ppFOS \
+python drive_uploader.py --folder <SUMCO_FOLDER_ID> \
   SUMCO_Presentation_Q1_FY2026.pdf SUMCO_Consolidated_Results_Q1_FY2026.pdf
 
 # Shin-Etsu Q&A → Wafer/Shin-etsu 폴더
-python drive_uploader.py --folder 1XJ1f6S545rjSbQvMWU0_5AKB1Du5q_4j \
+python drive_uploader.py --folder <SHINETSU_FOLDER_ID> \
   ShinEtsu_QA_Summary_Q4FY2025_20260428.pdf
 ```
 
@@ -52,13 +52,11 @@ size·md5가 모두 OK면 무손실 업로드 확정.
 스킬의 Step 4(드라이브 업로드)에서 Chrome UI 대신 이 스크립트를 호출하도록 바꾼다.
 (스킬 패치 문구는 `ir-collertor_skill_patch.md` 참조 → 다음 대화형 세션에서 skill-release로 반영.)
 
-## 5. 참고 폴더 ID (Wafer)
+## 5. 폴더 ID 확보
 
-| 폴더 | ID |
-|---|---|
-| Wafer/Sumco | 1ejl6F2qmjqvPHvKf6esMI2WqAP9ppFOS |
-| Wafer/Shin-etsu | 1XJ1f6S545rjSbQvMWU0_5AKB1Du5q_4j |
-| Wafer(루트) | 1-ZUubq07lQZ5cN8DLIzZi-Zx5hxxvBZm |
+폴더 ID는 문서에 기재하지 않는다. 실행 시 Google Drive `search_files`(title + `parentId`)로 대상 폴더
+(예: `Wafer/Sumco`, `Wafer/Shin-etsu`)를 조회해 `--folder`에 넣는다. `Investment Research` 루트 ID는
+Drive `Investment Research/_config/drive_folders.txt`의 `investment_research` 값.
 
 (폴더 ID는 Drive에서 폴더 연 뒤 URL의 `/folders/` 뒤 문자열)
 
