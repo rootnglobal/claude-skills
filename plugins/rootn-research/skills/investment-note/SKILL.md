@@ -1,6 +1,6 @@
 ---
 name: investment-note
-version: 261014
+version: 261021
 description: >
   주식 종목의 Investment Note(투자 메모/노트)를 만드는 스킬. 기본 산출물은
   Excel 파일 1개이며, 첫 시트에 1페이지 요약(단어·숫자 위주, 서술 최소화, 국문)을
@@ -165,7 +165,7 @@ Drive에서 (1)(2)를 먼저 찾고, 있으면 그것을 컨센 기준으로 쓰
 - 불일치·한계(주식수 변동, 세그먼트 분기분할 추정, 저신뢰 항목 등) 투명하게 고지.
 - 분기 자동 업데이트가 유용하면 스케줄링 제안.
 - **Drive 업로드**: 모델 xlsx는 공통규칙 §9 방법 D(`drive_uploader.py`)로 `[종목]/Model/`에 올린다.
-  커넥터 `create_file`은 ≲50KB 인라인만 허용 — 모델 xlsx(통상 80KB+)는 불가. 방법 D가 없는 환경(claude.ai 채팅 등)이면
+  커넥터 `create_file` 인라인 한도는 공통규칙 §9(≲30KB) — 모델 xlsx(통상 80KB+)는 불가. 방법 D가 없는 환경(claude.ai 채팅 등)이면
   (a) 노트 요지 md를 `리서치/`에 textContent로 올려 3점 검증(fileSize = 로컬 바이트), (b) 프로젝트 문서에도 저장,
   (c) xlsx는 채팅 파일로 전달하고 "데스크톱 Cowork에서 방법 D 업로드 필요"로 carry-over flagging.
 

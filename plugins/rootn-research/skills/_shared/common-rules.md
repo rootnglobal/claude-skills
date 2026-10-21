@@ -45,6 +45,7 @@
 
 ## 7. 예시 작성 규칙
 - 스킬 문서·템플릿의 예시에는 generic placeholder만 사용한다. 실존 종목명·수치 하드코딩 금지.
+- 예외: 참조 데이터 표(IR 도메인·사이트 URL 패턴 등)와 "검증 사례(YYYY-MM)"·"실측" 표기는 실존 종목명을 허용한다. 템플릿·지시 본문은 여전히 placeholder.
 
 ## 8. 발신자·CC 표준 (아웃리치 계열)
 - 자사 발신 계정·CC·서명은 Drive `_config/sender.txt`에서 읽는다(개인 주소를 문서에 직접 기재하지 않는다).
@@ -55,7 +56,8 @@
 - 런타임에 Chrome download path 확인 (`request_cowork_directory`).
 - binary download는 same-origin `fetch → blob` (curl/wget 아님).
 - **Drive 업로드는 방법 D(`drive_uploader.py`, Drive API resumable+md5)를 최우선**으로 쓴다. Cowork에 연결된 폴더에 `drive_uploader.py`+`credentials.json`+`token.json` 이 있으면 브라우저 없이 무인 동작. 실행: `py|python3 drive_uploader.py --folder <ID> [--name-suffix _v2] <파일들>` (셋업: ir-collertor `scripts/SETUP_Drive_API_uploader.md`).
-  - 커넥터 `create_file` 은 소용량(≲50KB)만 인라인 base64로 쓰고 반드시 fileSize 대조. `file_upload`(Chrome)는 Google Drive가 HTML `<input type=file>` 을 안 열어 **부적합**.
+  - 커넥터 `create_file` 인라인 base64는 **≲30KB**만 쓴다(2026-10 실측: 45KB docx에서도 1글자 전사 오류). 그보다 크면 방법 D, 업로더가 없으면 연결된 로컬 Drive 동기화 폴더 경유 또는 사용자 수동 업로드로 돌리고 실패 항목으로 flag한다. `file_upload`(Chrome)는 Google Drive가 HTML `<input type=file>` 을 안 열어 **부적합**.
+  - base64 업로드는 용량 일치만으로 검증되지 않는다(1글자 전사 오류도 용량 동일). 업로드 후 `download_file_content`로 받아 로컬 md5 비교 + docx/xlsx는 zip `testzip`. 같은 위치에서 오류가 반복되면 해당 zip 엔트리 압축방식을 바꿔(예: STORED) 새 파일명으로 재업로드하고, 손상본 정리는 사용자 확인 후.
 - EDINET은 API v2 + `Investment Research/_config/edinet_api.txt` 구독키.
 
 ## 10. Self-review 위치
