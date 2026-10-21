@@ -1,6 +1,6 @@
 ---
 name: bbg-sync
-version: 261013
+version: 261021
 description: >-
   블룸버그 PC의 로컬 인박스(C:\Bloomberg_Inbox\)에 떨어진 Bloomberg 산출물(blpapi 덤프 xlsx,
   RES 셀사이드 PDF, BI 리포트, 모델 export)을 데스크톱 앱 파일 브리지로 스캔해 구글 드라이브
@@ -87,7 +87,7 @@ C:\Bloomberg_Inbox\
   전무한 경우도 종목 특성이므로 flagging하지 않는다(Consensus까지 비면 그때 덤프 실패로 판단).
 
 ### 2-6. watchlist 소스·갱신 (시트 Apps Script가 자동 — Claude 세션 불필요)
-- **소스 오브 트루스 = Google Sheet**(RootN JP 모델포트, id `1cEYe8SgSXRO5DlGp8zRMiHaTBx6znUrcdE2yBrl5JcA`):
+- **소스 오브 트루스 = Google Sheet**(RootN JP 모델포트 `jp_model_portfolio`, 시트 ID는 Drive `Investment Research/_config/sheet_ids.txt`의 `jp_model_portfolio` 값 — 문서에 직접 기재하지 않는다):
   **`타깃` 탭 + `Watchlist` 탭의 합집합(중복 제거, 타깃 순서 우선)**. 청산 종목은 두 탭에서 빠지면 자동 제외.
 - **동작**: `BbgUniverseSync_v1.gs`의 `bbgSyncUniverse()`가 매일 06시 Drive의 watchlist.csv를 `setContent`로 갱신
   (변경 있을 때만, 기존 name·sector_pack 보존, 신규는 `jp_review` → 텔레로 추가/제외/미지정 보고).
