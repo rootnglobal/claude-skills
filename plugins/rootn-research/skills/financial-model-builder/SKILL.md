@@ -1,6 +1,6 @@
 ---
 name: financial-model-builder
-version: 261013
+version: 261021
 description: 주식 종목의 financial model을 Bloomberg Excel 템플릿 위에 만들고, IR 자료·sell-side 리포트·뉴스·웹서치·Gemini/GPT 리서치를 통합해 지역·제품·고객 segment별 매출/이익 breakdown, 수출입·수주잔고 등 선행지표, 그리고 성장의 원천(매출성장 vs mix개선 vs 마진개선, GP/OP)과 그 가속(growth delta)·지속성을 숫자로 분해하는 스킬. "재무모델 만들어줘", "financial model", "실적 모델", "segment 매출 분해", "growth 분해", "성장 지속성 분석", "밸류에이션 모델", "어닝 모델", "수주잔고 모델", 종목명·티커와 함께 모델/추정/분해 맥락이 나오면 이 스킬을 적극 사용할 것. 한국(DART)·미국(SEC)·일본(EDINET)·중국(CNINFO) 상장사를 모두 지원하며, 자료는 구글 드라이브의 'Investment Research/[종목명 (티커)]/' 데이터룸(Model·리서치·IR 폴더)에서 읽고 결과도 그 Model 폴더에 저장한다.
 ---
 
@@ -76,6 +76,8 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
   `리서치/consensus/`에 CapIQ estimates export(xlsx)가 있으면 BEst 덤프 검증·보완용으로 로드한다(둘 다 없으면 무료 소스 fallback).
 - **AI리서치 폴더**: 작업 시작 시 `AI리서치/` 폴더에 **빈 구글 Doc**(`YYYYMMDD_[종목명]_AI리서치`)을 만들어 사용자에게 링크를 주고, 거기에 Gemini/GPT 내용을 형식 제약 없이 복붙하게 한다(.txt 만들 필요 없음). 그 Doc을 읽어 가설 후보로만 반영. 1차 소스 인용 확인 시에만 숫자 채택. 상세는 `references/data-room.md`.
 - **웹서치**: 수출입 통계, 산업 데이터, 최근 뉴스, 경쟁사 동향을 보완한다. 항상 1차 출처로 역추적한다.
+  - *일본 종목 선행지표 소스(검증됨 2026-10)*: 재무성 무역통계는 e-Stat `stat-search/file-download?statInfId=…&fileKind=1`(앱ID 불요, 브라우저 UA 필수; 파일 목록은 `/retrieve/api_file?…` + `X-Requested-With: XMLHttpRequest`) — 全国分(국가별)·税関別(세관별, 지역 17개 파일) 9단위 HS. 세관=신고지라 생산자 귀속은 추정(공장 소재 세관 매칭)이며 동종 공장이 같은 지역에 있으면 귀속 불가로 표기. METI 生産動態는 meti.go.jp 403 → e-Stat 사본. 日本電線工業会 등 업계 통계는 공개 범위 축소 여부 확인. 美 수입은 Census API 키 필요 → 없으면 UN Comtrade preview(◐). 일본 정부·규제기관 공시(예: 레베뉴캡 投資量, OCCTO 供給計画)는 연 1~2회라 분기 예측보다 연 단위 수요 레벨 체크포인트로 쓴다.
+- **원자재 pass-through 기업의 일회성 재고·시차이익**: 회사 공시점(분기별 一時的利益 등)으로 ① 시차 스프레드 모델(판매가=분기평균, 원가=재고일수 시차)과 ② 월말 가격 변화(보유손익) 모델을 각각 보정해 범위로 제시하고 Base는 평균으로 둔다. 공시점이 3개 미만이면 금액 정밀도 낮음을 명시하고, 회사 가이던스가 가정한 원자재 경로(예: 추가 상승 없음)와 비교해 upside/downside로 표기한다.
 
 ### 3. 입력 정리 → inputs.json
 수집한 내용을 `assets/inputs_schema.json` 스키마에 맞춰 `inputs.json` 으로 정리한다. 각 숫자에는 반드시 `source`(출처)와 `tier`(소스 위계 등급)를 붙인다. 스키마는 segment build, revenue bridge 드라이버(volume/price/mix/fx), margin bridge, leading indicators, assumptions, qualitative(가설) 섹션을 포함한다.
@@ -104,9 +106,11 @@ bridge와 growth-delta는 **하드코딩이 아니라 Excel 수식**으로 깐�
 
 ### 5. 1페이지 메모
 `assets/memo_template.md` 를 채워 투자 논리 요약 메모를 만든다: 성장의 원천 한 줄, 지속성 판단(후행 vs 선행), 핵심 리스크, 다음 확인 포인트. 모델의 결론을 빠르게 전달하는 용도.
+- 실적 이벤트 전 판단(선진입 여부 등)이 목적이면 **가이던스 이력**(기초→상향 시점·폭, 실적/최종 가이던스, 최소 5~10년)과 **발표일 주가 반응**(d1·d5, 신가이던스 vs 컨센 대비)을 표로 붙이고, 신가이던스 예상치를 과거 상향 패턴으로 2~3가지 방법으로 산출해 컨센과 비교한다.
 
 ### 6. 저장 + 검증
 - 모델과 메모를 Drive `Model/` 폴더에 저장한다 (파일명: `[티커]_[종목명]_Model_v[YYMMDD].xlsx`).
+  - 업로드 경로·base64 한도(≲30KB)·md5·`testzip` 검증은 공통 규칙 §9를 따른다. 모델 xlsx는 보통 한도를 넘으므로 방법 D 또는 동기화 폴더/수동 업로드(실패 항목 flag).
 - **검증**: segment 합계 = 전사 매출 일치, bridge 합계 = 실제 ΔRevenue 일치, 출처 없는 셀 0개. 불일치는 메모에 명시한다.
 
 ## 산출물 요약
