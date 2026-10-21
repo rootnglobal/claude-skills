@@ -1,6 +1,6 @@
 ---
 name: financial-model-builder
-version: 261021b
+version: 261021c
 description: "Bloomberg Excel 템플릿 위에 종목 financial model을 만드는 스킬: IR·셀사이드·뉴스·웹 리서치를 통합해 지역·제품·고객 segment별 매출/이익, 수출입·수주잔고 등 선행지표, 성장 원천(매출·mix·마진)과 가속·지속성을 숫자로 분해. 한·미·일·중 지원. 트리거: 재무모델, financial model, 실적 모델, segment 분해, growth 분해, 어닝 모델, 수주잔고 모델."
 ---
 
@@ -65,6 +65,7 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
   최신 날짜 1개). 있으면 Consensus(FY1~3+분기)·Guidance·Recs·Revisions 시트를 로드해
   컨센 비교·guidance 갭 분석의 1차 소스로 쓴다. 없고 데스크톱 브리지가 살아 있으면
   `bbg-sync` 종목 모드를 먼저 1회 시도한다(오프라인이면 skip 보고).
+- **종목 폴더 digest 우선(단독 실행 시)**: 종목 폴더(하위 포함)에 `공시_타임라인_*`·`수출입_*` digest가 있으면 원자료 재수집 전에 먼저 읽고(최신 1개) 소스로 명시한다. 없으면 skip.
 - 템플릿을 로컬로 내려받아 `scripts/inspect_template.py` 로 구조를 파악한다. 이 스크립트는 시트 목록, 표준 IS/BS/CF 라인아이템, **Segments 탭의 segment 종류·기간 컬럼**, 그리고 캐시된 실적값(있으면)을 JSON으로 덤프한다.
 - **IS/BS/CF/Ratios 시트의 전 라인아이템(라벨+기간값)을 추출**해 `inputs.statements`로 옮긴다(값 있는 라인 모두 보존). 기간은 `meta.periods`에 정렬. Bloomberg 구조·mnemonic은 `references/bloomberg-template.md` 참고.
 
@@ -76,7 +77,7 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
   `리서치/consensus/`에 CapIQ estimates export(xlsx)가 있으면 BEst 덤프 검증·보완용으로 로드한다(둘 다 없으면 무료 소스 fallback).
 - **AI리서치 폴더**: 작업 시작 시 `AI리서치/` 폴더에 **빈 구글 Doc**(`YYYYMMDD_[종목명]_AI리서치`)을 만들어 사용자에게 링크를 주고, 거기에 Gemini/GPT 내용을 형식 제약 없이 복붙하게 한다(.txt 만들 필요 없음). 그 Doc을 읽어 가설 후보로만 반영. 1차 소스 인용 확인 시에만 숫자 채택. 상세는 `references/data-room.md`.
 - **웹서치**: 수출입 통계, 산업 데이터, 최근 뉴스, 경쟁사 동향을 보완한다. 항상 1차 출처로 역추적한다.
-  - *일본 종목 선행지표 소스(검증됨 2026-10)*: 재무성 무역통계는 e-Stat `stat-search/file-download?statInfId=…&fileKind=1`(앱ID 불요, 브라우저 UA 필수; 파일 목록은 `/retrieve/api_file?…` + `X-Requested-With: XMLHttpRequest`) — 全国分(국가별)·税関別(세관별, 지역 17개 파일) 9단위 HS. 세관=신고지라 생산자 귀속은 추정(공장 소재 세관 매칭)이며 동종 공장이 같은 지역에 있으면 귀속 불가로 표기. METI 生産動態는 meti.go.jp 403 → e-Stat 사본. 日本電線工業会 등 업계 통계는 공개 범위 축소 여부 확인. 美 수입은 Census API 키 필요 → 없으면 UN Comtrade preview(◐). 일본 정부·규제기관 공시(예: 레베뉴캡 投資量, OCCTO 供給計画)는 연 1~2회라 분기 예측보다 연 단위 수요 레벨 체크포인트로 쓴다.
+  - *일본 종목 선행지표 소스(검증됨 2026-10)*: 재무성 무역통계는 e-Stat `stat-search/file-download?statInfId=…&fileKind=1`(앱ID 불요, 브라우저 UA 필수; 파일 목록은 `/retrieve/api_file?…` + `X-Requested-With: XMLHttpRequest`) — 全国分(국가별)·税関別(세관별, 지역 17개 파일) 9단위 HS. 品別国別表 CSV는 全国分 행(`custom_code='ALL'`)과 税関別 행이 한 파일에 공존해 단순 합산하면 2배 계상 → 총계는 ALL 행만, 관서 분석은 관서 행만 쓴다. 세관=신고지라 생산자 귀속은 추정(공장 소재 세관 매칭)이며 동종 공장이 같은 지역에 있으면 귀속 불가로 표기. METI 生産動態는 meti.go.jp 403 → e-Stat 사본. 日本電線工業会 등 업계 통계는 공개 범위 축소 여부 확인. 美 수입은 Census API 키 필요 → 없으면 UN Comtrade preview(◐). 일본 정부·규제기관 공시(예: 레베뉴캡 投資量, OCCTO 供給計画)는 연 1~2회라 분기 예측보다 연 단위 수요 레벨 체크포인트로 쓴다.
 - **원자재 pass-through 기업의 일회성 재고·시차이익**: 회사 공시점(분기별 一時的利益 등)으로 ① 시차 스프레드 모델(판매가=분기평균, 원가=재고일수 시차)과 ② 월말 가격 변화(보유손익) 모델을 각각 보정해 범위로 제시하고 Base는 평균으로 둔다. 공시점이 3개 미만이면 금액 정밀도 낮음을 명시하고, 회사 가이던스가 가정한 원자재 경로(예: 추가 상승 없음)와 비교해 upside/downside로 표기한다.
 
 ### 3. 입력 정리 → inputs.json
@@ -110,8 +111,13 @@ bridge와 growth-delta는 **하드코딩이 아니라 Excel 수식**으로 깐�
 
 ### 6. 저장 + 검증
 - 모델과 메모를 Drive `Model/` 폴더에 저장한다 (파일명: `[티커]_[종목명]_Model_v[YYMMDD].xlsx`).
-  - 업로드 경로·base64 한도(≲30KB)·md5·`testzip` 검증은 공통 규칙 §9를 따른다. 모델 xlsx는 보통 한도를 넘으므로 방법 D 또는 동기화 폴더/수동 업로드(실패 항목 flag).
+  - 업로드 경로·base64 한도(≲30KB)·md5·`testzip` 검증은 공통 규칙 §9를 따른다. 모델 xlsx는 보통 한도를 넘으므로 방법 D 또는 동기화 폴더/수동 업로드(실패 항목 flag). 메모(.md)는 base64 대신 `textContent`로 `Model/`에 올린다.
 - **검증**: segment 합계 = 전사 매출 일치, bridge 합계 = 실제 ΔRevenue 일치, 출처 없는 셀 0개. 불일치는 메모에 명시한다.
+
+### 운영 노트 (v261014 — 검증 사례: 5801, 2026-10)
+- **BBG 템플릿 부재 시**: 일본 종목은 회사 IR의 FACT BOOK xlsx(분기 세그먼트·연결 P&L, 재작성 vintage 포함)가 1차 대체 소스. CF 계산서는 미수록으로 flag. irpocket JS 인덱스는 미사용 회사(404)가 있으니 1회 시도 후 회사 IR로 전환.
+- **분기 nowcast 모드**(사용자가 특정 분기를 강조할 때): 회사가 1H 가이던스를 공시하면 `내재 Q2 = 1H − Q1 실적`을 기준선으로 두고, 세그먼트별 `Q1 실적 → 드라이버별 QoQ Δ(Bear/Base/Bull) → Q2E` 브리지 시트를 만든다. 각 Δ 옆에 근거(회사 Q&A·무역통계·피어·대만 월매출)와 tier를 달고, 시나리오 선택 셀 하나로 Quarterly→Annual→Segment가 연동되게 한다. 비교열: 회사 내재 / 컨센(1H 컨센−Q1 포함) / 셀사이드 / 전년.
+- e-Stat 品別国別表 중복 계상(ALL vs 税関別)은 §2 일본 선행지표 소스, Drive 업로드 한도는 위 저장 항목·공통 규칙 §9로 통합.
 
 ## 산출물 요약
 1. **Excel 모델** — 위 7개 탭, 라이브 수식, 셀별 출처

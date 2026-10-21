@@ -1,6 +1,6 @@
 ---
 name: investment-note
-version: 261021c
+version: 261021d
 description: "종목 Investment Note(Excel 1개): 1페이지 국문 요약 + 연간·분기 모델(과거 3년+향후 3년), 세그먼트 세분화·P×Q·손익분기·민감도 계산, 경쟁사·supply chain, 컨센 대비 FY1·FY2 Bear/Base/Bull 업/다운사이드. Drive·로컬·공시·컨센 자료 종합. 트리거: investment note, 투자 노트/메모, 종목 분석 노트, 리서치 노트, 재무모델+노트, back of napkin."
 ---
 
@@ -45,6 +45,7 @@ Drive에서 (1)(2)를 먼저 찾고, 있으면 그것을 컨센 기준으로 쓰
 2. 구글 드라이브 검색: `search_files`로 `fullText contains '종목명'` 또는 전용 폴더.
    - 증권사 리포트(최신순 우선: 가장 최근 + 가장 심층 deep-dive), 사업보고서/IR.
    - 결과가 토큰 초과로 파일 저장되면 bash `jq`로 제목·id 추출.
+   - **종목 폴더 digest 우선(단독 실행 시)**: 종목 폴더(하위 포함)에 `공시_타임라인_*`·`수출입_*` digest가 있으면 원자료 재수집 전에 먼저 읽고(최신 1개) 소스로 명시한다. 없으면 skip.
 2b. **로컬 다운로드 폴더 스캔(데스크톱 연결 시 필수, 재수집 전에 먼저):** 데스크톱
    브리지가 연결돼 있으면 연결된 다운로드/드라이브 폴더(예: `~/Downloads`,
    `Desktop\Claude (drive 연동)\다운로드`, `Desktop\Drive`)를 `device_list_dir`로
