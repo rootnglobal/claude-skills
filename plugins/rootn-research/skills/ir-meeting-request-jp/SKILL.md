@@ -1,6 +1,6 @@
 ---
 name: ir-meeting-request-jp
-version: 261021
+version: 261021b
 description: "일본 상장사 IR 미팅 요청 메일(일본어+영어)을 작성해 Gmail 임시보관함에 저장하는 스킬. 회사명·4자리 코드로 IR 이메일을 찾고, 웹폼 전용이면 ir-webform으로 진행. 트리거: 일본 IR 미팅 요청, 일본 회사 미팅, JP IR meeting, 일본 기업탐방, 7203T 같은 코드와 미팅 요청. 여러 회사면 회사별 반복."
 ---
 
@@ -75,7 +75,7 @@ IR 캘린더(決算発表予定日)에서 **다음 결산발표일**을 확인�
  
 拝啓 時下ますますご清栄のこととお慶び申し上げます。
  
-私どもRootNGlobal Investorsは、長期的なバリュー投資を志向するロングオンリーの株式運用会社でございます（会社紹介：http://www.rootnglobal.com/eng/sub1_1.jsp）。
+私どもRootNGlobal Investorsは、10年以上のグローバル株式運用実績を持つ上場株式ロングオンリーの資産運用会社で、2～3年以上の長期保有を前提とした価値投資を志向しております（会社紹介：http://www.rootnglobal.com/eng/sub1_1.jsp）。最近、日本株ファンドを立ち上げ、日本企業への投資検討を進めております。
  
 現在、{会社名}様の主要事業の現況および中長期的な成長戦略について、より深い理解を得た上で投資検討を進めたく、IRミーティングをお願いしたくご連絡差し上げました。
  
@@ -91,7 +91,7 @@ RootNGlobal Investors
  
 Dear IR Team of {Company Name (English)},
  
-We are RootNGlobal Investors, a long-only equity asset manager focused on long-term value investing (about us: http://www.rootnglobal.com/eng/sub1_1.jsp).
+We are RootNGlobal Investors, a long-only equity asset manager with a global equity track record of over 10 years, investing for the long term with a typical holding period of 2-3 years or more (about us: http://www.rootnglobal.com/eng/sub1_1.jsp). We recently launched a Japan equity fund and are reviewing Japanese companies.
  
 We are currently conducting investment research on {Company Name (English)} and would greatly appreciate the opportunity to have an IR meeting to gain a deeper understanding of your business operations and mid-to-long-term growth strategy.
  

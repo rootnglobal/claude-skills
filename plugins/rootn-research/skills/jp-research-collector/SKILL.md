@@ -1,6 +1,6 @@
 ---
 name: jp-research-collector
-version: 261021b
+version: 261021c
 description: "일본 종목 리서치 자료 수집 스킬: Kabutan·Minkabu·株予報Pro 컨센서스, 四季報 독자예상, 공식 IR 결산설명자료 PDF, Shared Research·IR Agents 취재노트·개인투자자 IR Q&A를 모아 종목명_티커_YYMM 폴더로 정리. 트리거: 일본 종목 리서치, 일본주 자료 수집, 日本株リサーチ, 株探, 四季報, Shared Research, 일본 결산설명회, 4자리 코드와 자료 요청."
 ---
 
@@ -90,7 +90,7 @@ WebSearch로 기본 정보를 파악한다:
  
 아래 3개 사이트에서 컨센서스 정보를 수집한다. 각 사이트의 페이지를 Chrome으로 열고, 페이지 내용을 읽어서 주요 데이터를 텍스트 파일로 정리한다.
 
-> **효율 팁 (실전 검증, TOWA 6315)**: Kabutan(`stock/finance?code=`)·Kabuyoho(`sp/reportAnalyst?bcode=`)는 클라우드 `curl -sL -A "Mozilla/5.0"`로 200 응답하는 경우가 많다. **먼저 curl로 HTML을 받아 파싱하면 브라우저 탭 없이 훨씬 빠르다** — 재무 테이블은 `pandas.read_html`, 컨센 텍스트는 태그 제거로 추출. 403/차단이면 그때 Chrome으로 폴백한다. **Minkabu(`/analyst_consensus`)는 curl 403이 잦아 Chrome이 필요**하다.
+> **효율 팁 (실전 검증, TOWA 6315)**: Kabutan(`stock/finance?code=`)·Kabuyoho(`sp/reportAnalyst?bcode=`)는 클라우드 `curl -sL -A "Mozilla/5.0"`로 200 응답하는 경우가 많다. **먼저 curl로 HTML을 받아 파싱하면 브라우저 탭 없이 훨씬 빠르다** — 재무 테이블은 `pandas.read_html`, 컨센 텍스트는 태그 제거로 추출. 403/차단이면 그때 Chrome으로 폴백한다. **Minkabu(`/analyst_consensus`)는 curl 403이 잦지만 종목에 따라 200으로 컨센 HTML이 오기도 한다(검증 사례 6480, 2026-09: 200).** Kabuyoho도 종목·환경마다 다르다(JS 렌더링이라 curl HTML에 컨센이 비는 경우가 있음). → **두 사이트 모두 curl 1회 시도, 403이거나 본문에 컨센 숫자가 없으면 Chrome `get_page_text`로 폴백.** 클라우드 egress 제한 환경(§3-1 네트워크 전제 `000`)이면 처음부터 Chrome 단독.
  
 ### 2-1. 株予報Pro (kabuyoho.jp) — 컨센서스 예상
  
@@ -337,7 +337,7 @@ ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
 ### 3-1b. ★월차 매출·물량 KPI 페이지 (선행지표 — 반드시 확인)
 
 결산설명 자료만 받고 끝내지 말 것. 상당수 일본 기업이 **월차(月次) 데이터를 IR 사이트에 상설 공개**하며,
-이것이 growth delta 판정의 1차 선행지표가 된다. `peer-momentum-screener` / `jp-earnings-quality-screen`가
+이것이 growth delta 판정의 1차 선행지표가 된다. `peer-momentum-screener`(선행지표 growth delta 판정 기준)가
 그대로 소비하는 입력이므로 수집 단계에서 확보해 둔다.
 
 확인할 경로 (IR 톱의 "財務・業績" 또는 "月次" 계열 하위):
@@ -354,6 +354,13 @@ ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
 
 > 실측(NXHD 9147): 월차에서 국내 육상(철도·소구화물·자동차)은 전부 마이너스인데 세그먼트 이익은 증익 계획
 > → "국내 증익은 물량이 아니라 가격개정"이라는 결론이 월차 하나로 검증됐다. 이런 교차검증이 이 단계의 목적이다.
+
+### 3-1c. xj-storage / Wizlabo IR 라이브러리 (일본 중소형 다수)
+
+- **증상**: `/ir/library/{statement,report,securities,integrated_report}/` 의 정적 HTML(~8KB)엔 PDF 링크가 없고, `WllIrLibrary.js`(Wizlabo) 위젯이 문서 리스트를 JS로 렌더한다. 회사별 xj-storage 코드는 `WllBase.js` 안의 `AS#####`.
+- **처리**: 브라우저(Claude in Chrome 또는 built-in 브라우저)로 페이지를 열고 `read_page(filter=links)`로 렌더된 href를 추출한다. PDF 실호스트는 `contents.xj-storage.jp/xcontents/{ASxxxxx}/{hash}/{docid}.pdf` — curl 허용 환경이면 헤더 없이 curl 200(egress 제한 환경이면 §5 Chrome 경로). docid는 TDnet식 `140120YYMMDD...` 또는 script판 `YYYYMMDDhhmmss…s.pdf`.
+- **연도 전환**: 기본 노출은 최근 2개 회계연도(`max_years:2`). 그 이전은 연도 `<select>`(ref)를 `form_input(ref, value="YYYY")`로 전환 후 재-read. `read_page`가 ~28항목에서 truncate되므로 연도별 단독 조회로 회피한다.
+- 판별: IR 라이브러리 페이지 소스에 `WllIrLibrary`·`xj-storage` 문자열이 있으면 이 절차로 바로 간다(앵커 스캔으로 0건 나와도 "자료 없음" 아님).
 
 ### 3-2. CapIQ transcripts — transcript 1차 소스 (Chrome 가용 시)
 
@@ -426,7 +433,7 @@ document.querySelector('button[type="submit"]').click();
 4. PDF는 **사용자의 브라우저 다운로드 폴더**에 저장됨 (sandbox가 아님)
 5. 커버리지에 없는 종목은 skip
 
-> **계정 정보**: Drive `Investment Research/_config/sender.txt` 참조(Shared Research 계정). **계정·비밀번호를 이 문서에 직접 기재하지 않는다.**
+> **계정 정보**: 'RootN API Keys' 시트의 `service = Shared Research` 행(`account` = 로그인 ID, `key_value` = 비밀번호)을 우선 읽는다(`api-key-registry` §1). 시트에 없으면 legacy 위치 Drive `Investment Research/_config/sender.txt`의 Shared Research 항목을 쓰고 "시트 이전 필요"를 flag. **계정·비밀번호를 이 문서에 직접 기재하거나 출력·로깅하지 않는다.**
 > 로그인 실패 시 사용자에게 비밀번호 변경 여부 확인 요청
  
 ### 4-2. CapIQ Aftermarket Research — Shared Research 공백 보완 (Chrome 가용 시)
@@ -711,6 +718,9 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 - **javascript_tool 출력이 중간에 잘림**: 일본어 기준 약 1,700자가 한계. 전문은 Blob 다운로드로 사용자 폴더에 떨구고, 툴 출력으로는 헤딩·문항 머리·핵심 수치만 정규식으로 뽑는다.
 - **cdnjs 스크립트 로드 실패**: 해당 사이트 CSP가 외부 스크립트를 막는 경우. IR 사이트는 대체로 허용되므로, 막히면 CSP가 느슨한 다른 자사 페이지(월차 페이지 등)로 이동해 같은 작업을 수행한다.
 - **지주회사 전환 종목의 과거 데이터 단절**: 티커가 바뀌었으면(예: 日本通運 9062 → NIPPON EXPRESS HD 9147, 2022.1 株式移転) 전환 전 공시는 구 법인명으로 EDINET에 있고, 결산기 변경이 겹치면 변칙 결산(예: 2021년 4~12월 9개월)이 섞인다. 회사가 접합해 공표하는 장기 재무 Excel이 있으면 그것을 1차 소스로 쓴다.
+- **순수 클라우드 세션에서 Drive 대용량 PDF 업로드 불가**: 커넥터 인라인 업로드 한도(공통 규칙 §9, ≲30KB)로 PDF는 못 올린다. 텍스트 산출물(`*.txt`·요약)만 MCP로 업로드하고, PDF는 zip으로 묶어 사용자에게 전달 + 요약 '미업로드' 절에 flag(업로더·동기화 폴더가 있으면 §9 방법 D 우선).
+- **built-in 브라우저(`mcp__remote-devices__Claude_Browser`)**: `javascript_tool`의 eval/`console.log`가 값을 반환하지 않음(undefined) → DOM 추출은 `read_page(filter=links/interactive)`를 쓴다. `form_input`은 elements 배열이 아니라 flat `{ref, value}` 스키마. (Claude in Chrome은 `javascript_tool` 반환값 정상)
+- **xj-storage PDF가 curl로 안 받아짐**(드묾): 브라우저에서 링크를 클릭하지 말고 `read_page`로 얻은 href를 그대로 curl. 200바이트 미만이면 hash/docid를 재확인한다(§3-1c).
 
 ## 검증된 IR 사이트 도메인 목록
 
@@ -723,3 +733,5 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 | 高砂熱学 | 1969 | tte-net.com | /ir/ |
 | ＴＯＷＡ | 6315 | towajapan.co.jp | /jp/ir/library/ (서버렌더 — HTML을 curl로 받아 PDF·데이터북 링크 직접 추출 가능. 데이터북 = `*_briefing.xlsx`, PDF·xlsx 모두 클라우드 curl 다운로드됨) |
 | NIPPON EXPRESS HD | 9147 | nipponexpress-holdings.com | **`/ja/ir/event/data-room/`** (★IR資料室 아님. `<details>` 아코디언 — 펼쳐야 링크 추출됨. PDF는 pdf.irpocket.com/C9147/… 난수 경로. 월차 `/ja/ir/finance/monthly/`, 물량 KPI `/ja/ir/finance/airfreight_nxhd/`·`/marine_nxhd/`, 장기 재무 Excel `/ja/ir/finance/xls/financial-data.xls`. 経営計画 `/ja/ir/management/plan/`, 자본정책 `/ja/ir/management/improvement/`. 統合報告書·有報·ファクトブック 4개 페이지는 JS 렌더링이라 fetch-DOM 파싱 실패 → 브라우저로 직접 열 것) |
+| 日本トムソン (IKO) | 6480 | ikont.co.jp | `/ir/finance/fn04.html`(현행)·`fn04_kako.html`(과거短信)·`fn04_kako3.html`(과거설명자료). PDF는 `/ir/finance/pdf/` 아래, 컨테이너 curl 200(봇차단 없음). 파일명: `20YYNqkessan_r`=短信, `20YY03Nq_rb`=補足資料, `_rb2`=決算説明会(반기), `YYYYMMDD`=適時開示, `integrated_report{YYYY}_p`=統合報告書 |
+| 関東電化工業 | 4047 | kantodenka.co.jp | `/ir/library/statement/` (Wizlabo/xj-storage JS 위젯 — 정적 HTML엔 링크 없음, §3-1c. `read_page(filter=links)`로 href 추출, 연도 `<select>`는 `form_input(ref, value="2026")`로 전환. PDF는 `contents.xj-storage.jp/xcontents/AS01440/{hash}/{docid}.pdf` 컨테이너 curl 200) |

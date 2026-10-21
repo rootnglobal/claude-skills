@@ -51,7 +51,7 @@
 
 ## 8. 발신자·CC 표준 (아웃리치 계열)
 - 자사 발신 계정·CC·서명은 Drive `_config/sender.txt`에서 읽는다(개인 주소를 문서에 직접 기재하지 않는다).
-- `_config/sender.txt` 항목: `email`(발신), `cc`(IR 미팅요청·질문지 발송 공통 CC), `name`/`company`(서명), `name_kr`/`name_en`(리서처 국문·영문 이름 — 템플릿에 실명을 쓰지 않고 이 값으로 채운다), `phone`, `postal`/`address_kr`/`address_en`(주소 필수 폼용).
+- `_config/sender.txt` 항목: `email`(발신), `cc`(IR 미팅요청·질문지 발송 공통 CC), `name`/`company`(서명), `name_kr`/`name_en`(리서처 국문·영문 이름 — 템플릿에 실명을 쓰지 않고 이 값으로 채운다), `phone`, `postal_code`/`address_en`(주소 필수 폼용 — 해외 폼은 `address_en`), `address_kr`(선택 — 파일에 없을 수 있음, 국내 폼은 회사 주소 불필요).
 - 자사 도메인(답변 판정 시 '우리 쪽'): rootnwm.com, rootnglobal.com 전체
 
 ## 9. 다운로드/업로드 기술 표준 (collector 계열)
