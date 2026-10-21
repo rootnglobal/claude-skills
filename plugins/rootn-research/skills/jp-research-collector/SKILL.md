@@ -1,6 +1,6 @@
 ---
 name: jp-research-collector
-version: 261013
+version: 261021
 description: "일본 주식 종목 리서치 자료 자동 수집 스킬. 종목명 또는 4자리 종목코드를 입력하면 Kabutan(株探), Minkabu(みんかぶ), 株予報Pro(IFIS)에서 컨센서스·애널리스트 정보를 스크래핑하고, 회사사계보 온라인(四季報オンライン)에서 독자예상·기사를 수집하고, 공식 IR 페이지에서 결산설명자료 PDF를 curl로 다운로드하고, Shared Research Full Report와 IR Agents 취재노트(IR 1:1 인터뷰 Q&A), Kabu Berry·湘南投資勉強会 개인투자자 IR Q&A를 수집하여 로컬 폴더에 종목명_티커_YYMM 구조로 정리하는 스킬입니다. '일본 종목 리서치', '일본주 자료 수집', '日本株リサーチ', 'JP 리서치', '일본 IR 자료', '일본 결산설명회', '일본 애널리스트', '일본 컨센서스', 'Kabutan', 'Minkabu', '株探', 'Shared Research', 'ログミー', '四季報', '사계보', 'Toyo Keizai', 'IR Agents', '취재노트', 'Kabu Berry', '湘南投資勉強会', '일본 어닝콜', '일본 실적발표 자료', '일본 종목 분석 자료 모으기', '일본 주식 리포트 수집' 등의 키워드가 나오면 이 스킬을 사용하세요. 일본 4자리 종목코드(예: 6758, 7203)나 일본 회사명(예: 소니, 토요타)이 언급되면서 리서치·자료·리포트·IR 등의 맥락이 있으면 이 스킬을 적극 활용하세요."
 ---
 
@@ -206,7 +206,13 @@ EDINET 유가증권보고서를 AI로 요약·가공해 보여주는 무료 중�
  
 ### 3-1. 공식 IR 페이지에서 결산설명자료 PDF 수집
 
-**이 단계가 PDF 자료 수집의 핵심이다.** 대부분의 일본 상장사는 공식 IR 페이지에서 결산설명자료를 PDF로 제공하며, PDF 호스팅은 주로 `irpocket.com` 또는 `eir-parts.net`을 사용한다. 이 PDF들은 `curl`로 직접 다운로드 가능하다.
+**이 단계가 PDF 자료 수집의 핵심이다.** 대부분의 일본 상장사는 공식 IR 페이지에서 결산설명자료를 PDF로 제공하며, PDF 호스팅은 주로 `irpocket.com` 또는 `eir-parts.net`을 사용한다.
+
+> **네트워크 전제 (매 세션 첫 1회만 확인)**: 클라우드 컨테이너의 egress 정책은 조직·계정마다 다르다.
+> `curl -s -o /dev/null -w '%{http_code}' https://pdf.irpocket.com/` 로 1회 판별하고, `000`(CONNECT 403)이면
+> **클라우드 curl·WebFetch 경로를 전부 포기하고 Chrome 단독으로 진행**한다. 같은 세션에서 재시도 금지.
+> (2026-09 RootN 환경 실측: kabutan / kabuyoho / minkabu / 회사 IR 도메인 / pdf.irpocket.com / tdnet / edinet
+> 전부 차단. 데스크톱 로컬 VM도 연결 폴더가 없으면 device_bash 사용 불가 → Chrome이 유일 경로.)
 
 **공식 IR 페이지 찾기:**
 
@@ -220,11 +226,53 @@ WebSearch → "{회사명} IR 決算説明 投資家情報"
 - `https://www.{company}.co.jp/ir/library/` — IR 라이브러리
 - `https://www.{company}.co.jp/ir/result/` — 결산단신
 
-**PDF 링크 일괄 추출 (JavaScript 활용):**
+**★결산설명회 페이지가 IR 라이브러리 하위에 없을 때 (흔함)**
 
-Chrome으로 IR 페이지에 접속한 후, `javascript_tool`로 모든 PDF 링크를 한 번에 추출한다:
+회사에 따라 결산설명회 자료가 `library` 계열이 아니라 전혀 다른 경로에 있다.
+(실측: NIPPON EXPRESS HD 9147 = `/ja/ir/event/data-room/`. IR資料室에는 決算短信·有報·統合報告書만 있고
+설명회 자료는 "IRイベント" 하위에 들어 있었다.)
+**IR 라이브러리 목록만 보고 "결산설명자료 없음"이라고 단정하지 말 것.** 아래 2단계로 찾는다.
+
+1) **앵커 텍스트 스캔** — IR 톱·library·event 3개 페이지를 페이지 컨텍스트에서 `fetch`해 DOM 파싱하고,
+   링크 텍스트에 설명회 계열 키워드가 있는 것만 뽑는다. 네비게이션만 보면 안 보이는 링크가 잡힌다.
 
 ```javascript
+const urls = ['/ja/ir/', '/ja/ir/library/', '/ja/ir/event/'].map(p => location.origin + p);
+const res = [];
+for (const u of urls) {
+  const h = await (await fetch(u)).text();
+  const d = new DOMParser().parseFromString(h, 'text/html');
+  [...d.querySelectorAll('a[href]')].forEach(a => {
+    const t = a.textContent.replace(/\s+/g, ' ').trim();
+    if (/説明|プレゼン|ファクト|補足|データ|決算/i.test(t))
+      res.push(new URL(a.getAttribute('href'), u).href + ' | ' + t.slice(0, 60));
+  });
+}
+JSON.stringify([...new Set(res)].slice(0, 60));
+```
+
+2) **후보 URL 일괄 HEAD 판별** — 1)로도 안 나오면 흔한 경로를 한 번에 때려본다 (탭 이동 없이 status만 확인).
+
+```javascript
+const base = location.origin + '/ja/ir/';
+const cands = ['library/presentation/','library/briefing/','library/settlement/','event/data-room/',
+               'finance/presentation/','library/financial/','library/factbook/','event/presentation/'];
+const r = [];
+for (const c of cands) { try { r.push(c + ' -> ' + (await fetch(base + c)).status); } catch(e) { r.push(c + ' -> ERR'); } }
+JSON.stringify(r);
+```
+
+**PDF 링크 일괄 추출 (JavaScript 활용):**
+
+Chrome으로 IR 페이지에 접속한 후, `javascript_tool`로 모든 PDF 링크를 한 번에 추출한다.
+
+> **★필수 전처리**: 일본 IR 페이지는 연도별 아코디언(`<details>`)으로 과거 자료를 접어두는 경우가 매우 많다.
+> 접힌 상태에서는 링크가 DOM에 있어도 누락되기 쉬우므로, **추출 전 반드시 모두 펼친다**:
+> `document.querySelectorAll('details').forEach(d => d.open = true);`
+> 펼치기 전후로 추출 건수를 비교해 차이가 크면 아코디언이 원인이다. (실측: NXHD 9147은 펼치기 전 0건 → 펼친 후 111건)
+
+```javascript
+document.querySelectorAll('details').forEach(d => d.open = true);
 const links = document.querySelectorAll('a[href$=".pdf"]');
 const results = [];
 links.forEach(l => {
@@ -285,6 +333,27 @@ ir_supplement_YYYY-MM_FYxxxx_보충자료.pdf
 ir_tanshin_YYYY-MM_FYxxxx.pdf
 ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
 ```
+
+### 3-1b. ★월차 매출·물량 KPI 페이지 (선행지표 — 반드시 확인)
+
+결산설명 자료만 받고 끝내지 말 것. 상당수 일본 기업이 **월차(月次) 데이터를 IR 사이트에 상설 공개**하며,
+이것이 growth delta 판정의 1차 선행지표가 된다. `peer-momentum-screener` / `jp-earnings-quality-screen`가
+그대로 소비하는 입력이므로 수집 단계에서 확보해 둔다.
+
+확인할 경로 (IR 톱의 "財務・業績" 또는 "月次" 계열 하위):
+- `/ir/finance/monthly/` — 월차 매출고 (사업부문별 전년동월비). 통상 PDF 월 1건
+- `/ir/finance/airfreight*`, `/ir/finance/marine*`, `/ir/finance/sky*` — 물류·해운의 취급물량
+- 소매·외식이면 기존점 매출, 장비면 수주/BB비 — 업종별로 명칭이 다르므로 "月次""取扱実績""受注" 키워드로 탐색
+
+처리:
+1. 최근 24개월치 PDF를 §5의 JSZip 일괄 다운로드로 확보 (`monthly_YYYY_MM.pdf`)
+2. **최신 1건만** pdf.js로 텍스트 추출해 `leading_indicators_*.txt`에 표로 정리
+3. 요약에는 반드시 **YoY 수준이 아니라 YoY의 가속/감속(2차 미분)** 을 적는다.
+   예) "日本発 항공 1Q +112% → 2Q +110% → 7·8월 +125% = 가속"
+4. 회사가 "경영계획 KPI에 대응한다"고 주석을 단 지표는 ★표기 — 회사 스스로 책임지는 숫자다
+
+> 실측(NXHD 9147): 월차에서 국내 육상(철도·소구화물·자동차)은 전부 마이너스인데 세그먼트 이익은 증익 계획
+> → "국내 증익은 물량이 아니라 가격개정"이라는 결론이 월차 하나로 검증됐다. 이런 교차검증이 이 단계의 목적이다.
 
 ### 3-2. CapIQ transcripts — transcript 1차 소스 (Chrome 가용 시)
 
@@ -434,16 +503,89 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
  
 ### 다운로드 방법 (우선순위)
  
-1. **Bash curl** (★최우선): `irpocket.com`, `eir-parts.net`, `storage-yahoo.jp` 호스팅 PDF는 curl로 직접 다운로드 가능. 가장 효율적이고 안정적.
+0. **경로 판별 (먼저)**: §3-1의 egress 1회 테스트 결과에 따라 갈린다.
+   클라우드 curl이 살아 있으면 1번, `000`이면 **곧장 2번(JSZip)** 으로 간다.
+
+1. **Bash curl** (egress 허용 환경에서만): `irpocket.com`, `eir-parts.net`, `storage-yahoo.jp` 호스팅 PDF를 직접 다운로드.
    ```bash
    curl -sL -o "파일명.pdf" "PDF_URL"
    file 파일명.pdf  # 유효성 확인 (196 bytes 등 극소 파일은 실패)
    ```
-2. **Chrome 브라우저 다운로드**: Shared Research 등 로그인 필요 사이트. 다운로드된 파일은 사용자의 로컬 Downloads 폴더에 저장됨 (sandbox 아님).
-3. **텍스트 추출 저장**: Chrome `get_page_text`로 페이지 내용을 `.txt`로 저장. (Kabutan 재무, 컨센서스 등)
-4. **링크 수집**: 위 방법 모두 불가 시 `수집불가_링크모음.txt`에 URL·설명·접근불가 사유를 정리.
 
-> **중요**: curl로 다운받은 PDF는 반드시 `file` 명령으로 확인한다. 200 bytes 미만이면 HTML 리다이렉트 응답일 가능성이 높으므로 다른 URL을 시도한다.
+2. **★Chrome + JSZip 일괄 다운로드 (차단 환경의 표준 경로 — 실전 검증됨)**
+
+   Chrome 페이지 컨텍스트에서 PDF를 `fetch`해 zip 1개로 묶어 **1회만** 다운로드한다.
+   개별 파일을 연속 다운로드하면 Chrome이 중간에 차단하므로, 건수가 5건을 넘으면 무조건 이 방식을 쓴다.
+   (실측: 38건/69MB, 20건/7.4MB 각각 1회 성공)
+
+   ```javascript
+   // 1) 라이브러리 로드 (cdnjs 허용 확인됨). 페이지를 navigate하면 날아가므로 그때마다 재로드.
+   await new Promise((res, rej) => { const s = document.createElement('script');
+     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+     s.onload = res; s.onerror = () => rej('blocked'); document.head.appendChild(s); });
+
+   // 2) window.__ITEMS = [{h: <url>, name: <ASCII 파일명>}, ...] 를 미리 만들어 둔다
+   const zip = new JSZip(); const used = {}; const log = [];
+   for (const it of window.__ITEMS) {
+     let n = it.name;
+     if (used[n]) { used[n]++; n = n.replace(/\.(pdf|xls|xlsx)$/, '_' + used[it.name] + '.$1'); } else used[n] = 1;
+     try {
+       const r = await fetch(it.h);
+       if (!r.ok) { log.push('FAIL ' + r.status + ' ' + n); continue; }
+       const b = await r.arrayBuffer();
+       if (b.byteLength < 2000) { log.push('TOOSMALL ' + b.byteLength + ' ' + n); continue; }  // HTML 리다이렉트
+       zip.file(n, b); log.push('OK ' + (b.byteLength / 1024 | 0) + 'KB ' + n);
+     } catch (e) { log.push('ERR ' + n + ' ' + e.message); }
+   }
+   const blob = await zip.generateAsync({ type: 'blob' });
+   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+   a.download = '{영문사명}_{코드}_IR_{YYMMDD}.zip'; document.body.appendChild(a); a.click();
+   JSON.stringify({ zipKB: blob.size / 1024 | 0, log });
+   ```
+
+   - **툴 출력이 잘려 log 뒷부분을 못 볼 수 있다.** 성공 여부는 `log.filter(x => !x.startsWith('OK'))` 로만
+     따로 뽑아 확인하고, 전량 성공이면 실패 목록이 빈 배열로 나온다.
+   - 파일명은 반드시 ASCII (`ir_qa_FY2026Q2.pdf` 등). 일본어 파일명은 zip 압축 해제 시 깨진다.
+   - zip은 사용자의 **Chrome 다운로드 폴더**(Drive 연동 폴더인 경우가 많음)에 떨어진다.
+     컨테이너에서는 확인할 수 없으므로 **결과 보고에 "압축 해제 필요"와 예상 파일명을 반드시 명시**한다.
+
+3. **★pdf.js 텍스트 추출 → Blob 다운로드 (토큰 절약의 핵심)**
+
+   質疑応答要旨·補足資料처럼 텍스트가 본체인 PDF는 브라우저에서 추출한다.
+   **추출한 전문을 툴 출력으로 회수하지 말 것** — `javascript_tool` 출력은 일본어 기준 약 1,700자에서 잘리므로,
+   3만 자짜리 자료를 끌어오려면 15회 이상 호출해야 해서 토큰이 폭증한다.
+
+   ```javascript
+   await new Promise((res, rej) => { const s = document.createElement('script');
+     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+     s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+   window.__ext = async (url) => {
+     const d = await pdfjsLib.getDocument({ url }).promise; let o = '';
+     for (let i = 1; i <= d.numPages; i++) {
+       const tc = await (await d.getPage(i)).getTextContent();
+       let last = null, line = ''; const lines = [];
+       tc.items.forEach(it => { const y = Math.round(it.transform[5]);
+         if (last !== null && Math.abs(y - last) > 3) { lines.push(line); line = ''; }
+         line += it.str; last = y; });
+       lines.push(line); o += '\n--- p' + i + ' ---\n' + lines.join('\n');
+     }
+     return o;
+   };
+   ```
+
+   회수 규칙:
+   - **전문** → `Blob` 다운로드로 사용자 폴더에 직접 떨군다 (`{코드}_QA_all.txt` 등). 컨텍스트를 거치지 않는다.
+   - **툴 출력으로는 구조만** 가져온다 — 섹션 헤딩, `Q\d+` 문항 머리 40~60자, 핵심 수치 1줄.
+     예: `[...c.matchAll(/Q\d+[．.](.{0,50})/g)].map(m => m[1])`
+   - 표 형식 슬라이드는 페이지 단위로 키워드 필터링해 필요한 페이지만 본다
+     (`if (/欧州/.test(body) && /事業利益/.test(body))`).
+
+4. **텍스트 추출 저장**: Chrome `get_page_text`로 페이지 내용을 `.txt`로 저장. (Kabutan 재무, 컨센서스 등)
+
+5. **링크 수집**: 위 방법 모두 불가 시 `수집불가_링크모음.txt`에 URL·설명·접근불가 사유를 정리.
+
+> **중요**: curl로 다운받은 PDF는 반드시 `file` 명령으로 확인한다. 200 bytes 미만이면 HTML 리다이렉트 응답일 가능성이 높으므로 다른 URL을 시도한다. JSZip 경로에서는 위 코드의 `byteLength < 2000` 가드가 같은 역할을 한다.
  
 ### 파일명 규칙
  
@@ -464,8 +606,18 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
 - `ir_supplement_2026-02_FY2026_3Q.pdf` — 분기 보충자료
 - `ir_tanshin_2026-02_FY2026_3Q.pdf` — 결산단신
 - `ir_individual_investor_presentation.pdf` — 개인투자자 설명자료
+- `monthly_2026_08.pdf` — 월차 매출 리포트 (§3-1b)
+- `leading_indicators_volume.txt` — 월별 취급물량·월차 매출 YoY 정리 (§3-1b)
+- `segment_guidance_FY2026.txt` — 세그먼트별 가이던스 vs 전기 실적 + 환율 특수요인 분해
+- `capital_allocation_*.txt` — 자본배분·주주환원 계획 (자사주·정책보유주 축소·자산매각)
+- `qa_agenda_FY20XX-FY20YY.txt` — 질의응답 논점 지도 (전문은 Blob 다운로드본에 위임)
 - `수집_요약.txt` — 개별 종목 수집 요약
 - `수집불가_링크모음.txt` — 다운로드 불가 자료의 링크 목록
+
+zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — 컨테이너에서 확인 불가하므로 보고에 명시):
+- `{영문사명}_{코드}_IR_{YYMMDD}.zip` — IR PDF·Excel 일괄
+- `{영문사명}_{코드}_monthly_{YYYY}-{YYYY}.zip` — 월차 리포트 일괄
+- `{코드}_QA_FY20XX-FY20YY_all.txt` / `{코드}_{분기}_supplement_raw.txt` — pdf.js 추출 전문
  
 ### 최종 폴더 구조 (실전 예시)
  
@@ -552,6 +704,13 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
 - **Kabu Berry·湘南 Q&A 텍스트를 못 찾음**: 행사 자체가 없거나 영상만 공개된 경우. 해당 회사 IR note(`note.com/{회사}_ir`)를 한 번 더 확인하고 없으면 링크만 기록.
 - **공식 IR 사이트 도메인 불명**: WebSearch로 `"{회사명} IR 投資家情報"` 검색하여 정확한 도메인 확인. 예: 노무라마이크로는 `nomura-nms.co.jp` (nomura-ms.co.jp가 아님).
 - **여러 종목 처리 시 효율**: 동일 소스(Kabuyoho → Minkabu → Kabutan)를 전 종목에 순차 처리한 후, IR PDF 다운로드를 별도 배치로 처리하면 Chrome 탭 전환이 줄어들어 효율적.
+- **클라우드 curl·WebFetch가 전부 `000`**: 조직 egress 차단(CONNECT 403). `curl -sS "$HTTPS_PROXY/__agentproxy/status"` 로 확인 가능. 우회 시도 금지 — Chrome 단독으로 전환하고 요약의 '미수집' 절에 사유를 명시한다.
+- **IR 라이브러리에 결산설명자료가 없음**: §3-1의 앵커 텍스트 스캔 + 후보 URL HEAD 판별 2단계를 쓸 것. "없음"으로 단정하기 전에 IR 톱·event 페이지까지 훑는다.
+- **PDF 링크가 0건 추출됨**: `<details>` 아코디언이 접혀 있을 가능성이 가장 높다. `d.open = true` 후 재시도. 그래도 0건이면 JS 렌더링 페이지이므로 `fetch` + DOMParser가 아니라 **실제 navigate 후** 추출해야 한다.
+- **Chrome 연속 다운로드가 중간에 멈춤**: 브라우저의 다중 다운로드 차단. §5-2 JSZip 1회 다운로드로 전환.
+- **javascript_tool 출력이 중간에 잘림**: 일본어 기준 약 1,700자가 한계. 전문은 Blob 다운로드로 사용자 폴더에 떨구고, 툴 출력으로는 헤딩·문항 머리·핵심 수치만 정규식으로 뽑는다.
+- **cdnjs 스크립트 로드 실패**: 해당 사이트 CSP가 외부 스크립트를 막는 경우. IR 사이트는 대체로 허용되므로, 막히면 CSP가 느슨한 다른 자사 페이지(월차 페이지 등)로 이동해 같은 작업을 수행한다.
+- **지주회사 전환 종목의 과거 데이터 단절**: 티커가 바뀌었으면(예: 日本通運 9062 → NIPPON EXPRESS HD 9147, 2022.1 株式移転) 전환 전 공시는 구 법인명으로 EDINET에 있고, 결산기 변경이 겹치면 변칙 결산(예: 2021년 4~12월 9개월)이 섞인다. 회사가 접합해 공표하는 장기 재무 Excel이 있으면 그것을 1차 소스로 쓴다.
 
 ## 검증된 IR 사이트 도메인 목록
 
@@ -563,3 +722,4 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
 | 大気社 | 1979 | taikisha.co.jp | /ir/ |
 | 高砂熱学 | 1969 | tte-net.com | /ir/ |
 | ＴＯＷＡ | 6315 | towajapan.co.jp | /jp/ir/library/ (서버렌더 — HTML을 curl로 받아 PDF·데이터북 링크 직접 추출 가능. 데이터북 = `*_briefing.xlsx`, PDF·xlsx 모두 클라우드 curl 다운로드됨) |
+| NIPPON EXPRESS HD | 9147 | nipponexpress-holdings.com | **`/ja/ir/event/data-room/`** (★IR資料室 아님. `<details>` 아코디언 — 펼쳐야 링크 추출됨. PDF는 pdf.irpocket.com/C9147/… 난수 경로. 월차 `/ja/ir/finance/monthly/`, 물량 KPI `/ja/ir/finance/airfreight_nxhd/`·`/marine_nxhd/`, 장기 재무 Excel `/ja/ir/finance/xls/financial-data.xls`. 経営計画 `/ja/ir/management/plan/`, 자본정책 `/ja/ir/management/improvement/`. 統合報告書·有報·ファクトブック 4개 페이지는 JS 렌더링이라 fetch-DOM 파싱 실패 → 브라우저로 직접 열 것) |
