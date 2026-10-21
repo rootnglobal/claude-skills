@@ -1,12 +1,12 @@
 ---
 name: financial-model-builder
-version: 261021
-description: 주식 종목의 financial model을 Bloomberg Excel 템플릿 위에 만들고, IR 자료·sell-side 리포트·뉴스·웹서치·Gemini/GPT 리서치를 통합해 지역·제품·고객 segment별 매출/이익 breakdown, 수출입·수주잔고 등 선행지표, 그리고 성장의 원천(매출성장 vs mix개선 vs 마진개선, GP/OP)과 그 가속(growth delta)·지속성을 숫자로 분해하는 스킬. "재무모델 만들어줘", "financial model", "실적 모델", "segment 매출 분해", "growth 분해", "성장 지속성 분석", "밸류에이션 모델", "어닝 모델", "수주잔고 모델", 종목명·티커와 함께 모델/추정/분해 맥락이 나오면 이 스킬을 적극 사용할 것. 한국(DART)·미국(SEC)·일본(EDINET)·중국(CNINFO) 상장사를 모두 지원하며, 자료는 구글 드라이브의 'Investment Research/[종목명 (티커)]/' 데이터룸(Model·리서치·IR 폴더)에서 읽고 결과도 그 Model 폴더에 저장한다.
+version: 261021b
+description: "Bloomberg Excel 템플릿 위에 종목 financial model을 만드는 스킬: IR·셀사이드·뉴스·웹 리서치를 통합해 지역·제품·고객 segment별 매출/이익, 수출입·수주잔고 등 선행지표, 성장 원천(매출·mix·마진)과 가속·지속성을 숫자로 분해. 한·미·일·중 지원. 트리거: 재무모델, financial model, 실적 모델, segment 분해, growth 분해, 어닝 모델, 수주잔고 모델."
 ---
 
 # Financial Model Builder
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 업로드본 SKILL.md를 즉석 수정하고 동일 diff를 SSOT repo(claude-skills)에 반영한다 (repo 미접근 환경이면 diff를 출력해 "다음 Cowork 세션에서 repo 반영 필요"로 flagging). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 
 ## 이 스킬이 답하려는 질문

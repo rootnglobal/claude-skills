@@ -1,17 +1,7 @@
 ---
 name: bbg-sync
-version: 261021b
-description: >-
-  블룸버그 PC의 로컬 인박스(C:\Bloomberg_Inbox\)에 떨어진 Bloomberg 산출물(blpapi 덤프 xlsx,
-  RES 셀사이드 PDF, BI 리포트, 모델 export)을 데스크톱 앱 파일 브리지로 스캔해 구글 드라이브
-  'Investment Research' 종목 폴더(xlsx→Model/, PDF→리서치/, IR성→IR/)로 인제스트하는 스킬.
-  Layer 1(파일 생성)은 블룸버그 PC의 bbg_dump.py(xbbg/blpapi, Windows 작업 스케줄러)와 수동
-  다운로드가 담당하고, 이 스킬은 Layer 2(집어가기)를 담당한다. "인박스 싱크", "블룸버그 싱크",
-  "BBG 싱크", "Bloomberg_Inbox 정리", "블룸버그 덤프 올려줘", "BBG 파일 드라이브로" 등의 키워드,
-  또는 ir-research-pipeline이 Bloomberg 자산 점검 단계에서 호출할 때 이 스킬을 사용할 것.
-  종목 모드(특정 티커만)와 전체 모드(인박스 전량) 지원. 덤프 유니버스·주기·헬스체크 운영 질문
-  ("BBG 덤프 종목", "덤프 주기", "watchlist.csv")에도 사용. RootN 리서처 전용.
-  (v261013: 덤프 주 1회 + 실적 후 단건, Drive 자동동기화, 시트 Apps Script가 유니버스 관리)
+version: 261021c
+description: "블룸버그 PC 인박스(C:\\Bloomberg_Inbox\\)의 Bloomberg 산출물(blpapi 덤프 xlsx·RES/BI PDF·모델 export)을 Drive 'Investment Research' 종목 폴더(Model/·리서치/·IR/)로 인제스트하는 스킬(덤프 생성은 bbg_dump.py). 트리거: 인박스 싱크, 블룸버그/BBG 싱크, Bloomberg_Inbox 정리, 블룸버그 덤프 올려줘. ir-research-pipeline의 BBG 점검 단계에서도 호출."
 ---
 
 # bbg-sync — Bloomberg_Inbox → Drive 인제스트

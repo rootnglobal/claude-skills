@@ -1,25 +1,12 @@
 ---
 name: ir-research-pipeline
-version: 261021
-description: >
-  종목 하나에 대한 IR 리서치 전 과정을 한 번에 끝내는 오케스트레이터 스킬.
-  (1) IR 자료 수집(공식 IR·공시·DART/SEC/EDINET/CNINFO) + Gmail에서 IR이 보낸
-  자료·스레드 수집, (2) 리서치 자료 수집(셀사이드·컨센서스, 일본 종목이면
-  Kabutan/Minkabu/Kabuyoho/Shared Research; Chrome 가용 시 CapIQ transcript·셀사이드,
-  브리지 가용 시 Bloomberg_Inbox 덤프 인제스트), (3) 구글 드라이브 종목 폴더 표준화
-  정리(IR/리서치 하위폴더·중복 제거), (4) Investment Note(Excel 모델+1p 요약)와
-  IR 사전 질문지(현지어 발송본·국문본 별도 파일 + 해결 Q&A + 콜 진행용 시트) 작성, (5) Gmail에 해당 종목
-  IR 메일이 있으면 그 메일에 대한 답장 초안 작성을 순서대로 실행한다. 진행 중
-  Bloomberg Excel 템플릿 등 추가로 필요한 자료가 있으면 사용자에게 요청한다.
-  "이 종목 IR 리서치 풀로 돌려줘", "종목 IR 자료부터 노트·질문지까지", "IR 파이프라인",
-  "IR 자료 모으고 노트랑 질문지 만들어줘", "종목 통합 리서치", 종목명·티커와 함께
-  '풀로/한번에/처음부터 끝까지/통합/파이프라인' 맥락이 나오면 이 스킬을 사용할 것.
-  한국·미국·일본·중국 상장사 모두 지원. RootN 리서처 전용 워크플로우.
+version: 261021b
+description: "종목 하나의 IR 리서치를 끝까지 돌리는 오케스트레이터: IR·Gmail 자료 수집 → 셀사이드·컨센(일본 소스·CapIQ·BBG 포함) → Drive 폴더 정리 → Investment Note + IR 질문지 → IR 메일 답장 초안. 한·미·일·중 지원. 트리거: IR 리서치 풀로, IR 파이프라인, 자료부터 노트·질문지까지, 종목 통합 리서치, 처음부터 끝까지."
 ---
 
 # IR 리서치 통합 파이프라인 (IR Research Pipeline)
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 업로드본 SKILL.md를 즉석 수정하고 동일 diff를 SSOT repo(claude-skills)에 반영한다 (repo 미접근 환경이면 diff를 출력해 "다음 Cowork 세션에서 repo 반영 필요"로 flagging). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 
 RootN 리서처용. **종목 하나를 받아 IR 리서치 전 과정을 한 번에 끝내는 오케스트레이터**다.

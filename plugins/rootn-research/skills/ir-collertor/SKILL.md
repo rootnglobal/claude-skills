@@ -1,12 +1,12 @@
 ---
 name: ir-collertor
-version: 261021b
-description: "IR 자료 수집 스킬 - 주식 종목명 또는 티커를 입력하면 최근 2년간의 IR(Investor Relations) 자료를 공식 IR 페이지와 공시 사이트(DART, SEC EDGAR, EDINET, CNINFO)에서 검색하여 수집하고, 구글 드라이브의 'Investment Research' 폴더 아래에 [종목명]/IR 구조로 정리해주는 스킬입니다. 이 스킬은 종목 리서치, IR 자료 수집, 투자자료 정리, 기업 공시 자료 모음, 어닝콜 자료, 사업보고서, Annual Report, Quarterly Report, 10-K, 10-Q, 유가증권보고서, 반기보고서, 분기보고서, 결산설명회 자료 등의 수집에 사용하세요. 한국(DART/KRX), 미국(SEC EDGAR), 일본(EDINET/TDnet), 중국(CNINFO/SSE/SZSE) 종목을 지원합니다. 사용자가 '티커', '종목', 'IR', '투자자료', '공시', '어닝콜', '실적발표' 등을 언급하면 이 스킬을 사용하세요."
+version: 261021c
+description: "종목명·티커로 최근 2년 IR 자료(실적발표·사업보고서·10-K/10-Q·有報·결산설명회 등)를 공식 IR 페이지와 DART·SEC EDGAR·EDINET/TDnet·CNINFO에서 수집해 Drive 'Investment Research/[종목명]/IR'에 정리하는 스킬. 트리거: IR 자료 수집, 투자자료, 공시 자료, 어닝콜 자료, 실적발표 자료, 종목 IR."
 ---
 
 # IR 자료 수집 스킬 (IR Collector)
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 업로드본 SKILL.md를 즉석 수정하고 동일 diff를 SSOT repo(claude-skills)에 반영한다 (repo 미접근 환경이면 diff를 출력해 "다음 Cowork 세션에서 repo 반영 필요"로 flagging). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
  
 종목명 또는 티커를 받아 최근 2년간의 IR 자료를 검색·수집하고 구글 드라이브에 정리하는 워크플로우.

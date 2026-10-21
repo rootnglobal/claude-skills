@@ -1,7 +1,7 @@
 ---
 name: api-key-registry
-version: 261021
-description: RootN API 키·인증키 중앙 레지스트리(구글시트 'RootN API Keys') 조회·등록 스킬. 어떤 작업에서든 API 키/서비스키/토큰/인증키가 필요해지면 사용자에게 묻거나 새로 발급받기 전에 반드시 이 스킬로 레지스트리를 먼저 조회할 것. "API 키 어디 있어", "인증키 등록해줘", "키 저장해줘", "서비스키 필요", "키 관리", "토큰 찾아줘" 등의 키워드, 또는 스크립트·스킬 실행 중 401/Unauthorized/키 미설정 오류가 나면 이 스킬을 사용할 것. 새 키를 발급받거나 사용자가 키를 붙여넣으면 레지스트리 등록을 먼저 제안한다. RootN 리서처 전용.
+version: 261021b
+description: "RootN API 키·인증키 레지스트리(구글시트 'RootN API Keys') 조회·등록 스킬. API 키·서비스키·토큰이 필요하면 사용자에게 묻기 전에 먼저 조회하고, 401/Unauthorized/키 미설정 오류 때도 사용. 새 키를 받으면 등록을 제안. 트리거: API 키 어디 있어, 인증키 등록, 키 저장, 서비스키 필요, 키 관리, 토큰 찾아줘."
 ---
 
 # api-key-registry
@@ -52,4 +52,4 @@ Drive MCP는 구글시트 셀 수정이 불가하다(파일 신규 생성만 가
 | FRED | 미국 거시 시계열 | 시트 + liquidity_monitor.py 내장 |
 | data.go.kr | 금융위 파생상품시세(한국 옵션) | 시트 + datago_key.txt |
 | Telegram | 유동성 모니터 발송 봇 | 시트 + 각 트리거 프롬프트 |
-| GitHub PAT | claude-skills SSOT push | 값은 Drive rootn_gh_pat.txt |
+| GitHub PAT | claude-skills-2 트래커 state push (Actions 이전 후 revoke 예정) | 값은 Drive rootn_gh_pat.txt |

@@ -1,6 +1,6 @@
 ---
 name: skill-release
-version: 260805b
+version: 261021
 description: "RootN 커스텀 스킬의 SSOT(Git repo) 관리·검증·배포 스킬. 스킬을 수정/추가한 뒤 '스킬 릴리즈', '스킬 배포', '스킬 검증', '스킬 싱크', 'SSOT 체크', '스킬 버전 올려줘', '스킬 diff' 등의 키워드가 나오면 이 스킬을 사용할 것. 스킬 수정 작업을 마쳤을 때 이 스킬을 후속으로 제안한다. push 가능 여부는 세션마다 다르므로 추정하지 말고 '테스트 브랜치 빈 커밋 push' 1회로 먼저 판별한다."
 ---
 
@@ -9,12 +9,12 @@ description: "RootN 커스텀 스킬의 SSOT(Git repo) 관리·검증·배포 �
 ## 저장소 구조 (SSOT = 이 Git repo 하나)
 
 ```
-claude-skills/                  ← Git repo 루트 (Cowork 로컬)
+claude-skills-2/                ← Git repo 루트 (데스크톱 로컬 clone)
 ├── _shared/
 │   └── common-rules.md         ← 공통 규칙 canonical (복제 금지, 참조만)
 ├── _meta/
 │   ├── check_skills.py         ← 검증기
-│   ├── uploaded_manifest.json  ← 마지막 배포 시점의 claude.ai 업로드본 해시
+│   ├── uploaded_manifest.json  ← (legacy, 갱신 중단) 구 claude.ai 업로드본 해시
 │   └── CHANGELOG.md            ← 릴리즈 로그 (날짜·스킬·변경 요약)
 └── skills/
     ├── ir-collertor/SKILL.md
@@ -27,22 +27,21 @@ claude-skills/                  ← Git repo 루트 (Cowork 로컬)
 - 스킬을 고치면 그 SKILL.md frontmatter의 `version: YYMMDD`를 그날 날짜로 올린다.
 - 공통 규칙 문구는 `_shared/common-rules.md`에서만 수정한다.
 - 원격 SSOT: `https://github.com/rootnglobal/claude-skills-2.git` (branch `master`) — 이 원격이 단일 진실원이고,
-  편집·pull·push는 **클라우드 작업본(`/tmp/claude-skills`)에서** 한다.
-  - 동기화는 `skills-sync` 스킬(내부 `skills_sync.sh`)로 처리한다: Google Drive의 fine-grained PAT 파일
-    (`rootn_gh_pat.txt`, Contents R/W·이 repo 한정·무기한)을 읽어 클라우드 컨테이너에서 clone/pull/push.
-    데스크톱·핸드폰·블룸버그·헤드리스 어디서든 동일하게 동작한다.
-  - **device_bash(기기 마운트)로 로컬 `.git`을 갱신하지 말 것** — 네트워크가 없고 덮어쓰기·삭제가 막혀 실패한다
-    (구 방식의 'push 후 로컬 git pull' 단계는 폐기). 데스크톱 로컬 사본이 꼭 필요하면 사용자가 네이티브 터미널에서 pull한다.
-  - 토큰은 Drive에만 두고 스킬·repo·로그에 남기지 않는다(출력 시 `github_pat_...` 마스킹).
+  편집·pull·push는 **데스크톱 Claude Code(로컬 clone, 사용자 git 인증)에서만** 한다(2026-10-21 결정).
+  - 구 `skills-sync`(Drive PAT 파일로 클라우드 컨테이너에서 clone/push)는 **폐기**했다 — PAT를 Drive 파일로 다루는 방식이
+    시크릿 원칙(GitHub Secrets·'RootN API Keys' 시트만)과 Cowork 승인 분류기에 막힌다.
+  - repo에 접근할 수 없는 세션(Cowork·모바일·claude.ai)에서는 편집·push하지 않는다. 수정 지시를 txt로 Drive `Skill/` 폴더에
+    남기면 다음 데스크톱 세션이 반영한다(공통 규칙 §12).
+  - **device_bash(기기 마운트)로 로컬 `.git`을 갱신하지 말 것** — 네트워크가 없고 덮어쓰기·삭제가 막혀 실패한다.
 
 ## 0. 편집 전 SSOT 대조 (생략 금지 — 사고 1순위)
 
-**세션 컨테이너에 설치된 스킬 사본(`/root/.claude/skills/<이름>/SKILL.md`, 플러그인 동기화본)은 SSOT보다 구버전일 수 있다.**
-이 사본을 base로 고쳐서 push하면 그 사이 SSOT에 들어간 블록이 조용히 삭제된다.
+**세션에 설치된 스킬 사본(플러그인 캐시본)은 SSOT보다 구버전일 수 있다.**
+이 사본을 base로 고쳐서 push하면 그 사이 SSOT에 들어간 블록이 조용히 삭제된다. 편집은 항상 `git pull` 직후의 repo 파일에서 한다.
 
 ```
-bash <skills-sync>/skills_sync.sh pull        # 또는 clone → /tmp/claude-skills
-diff /root/.claude/skills/<이름>/SKILL.md /tmp/claude-skills/skills/<이름>/SKILL.md
+git pull                                       # repo 루트에서
+diff <플러그인 캐시>/skills/<이름>/SKILL.md skills/<이름>/SKILL.md   # 캐시본을 참고했다면
 ```
 
 - diff가 비어 있지 않으면 **반드시 SSOT 파일을 base로 다시 편집한다.** 캐시본 편집분을 덮어쓰지 않는다.
@@ -52,6 +51,9 @@ diff /root/.claude/skills/<이름>/SKILL.md /tmp/claude-skills/skills/<이름>/S
   패치가 0바이트로 나오면 이미 로컬 커밋된 상태이므로 `git diff HEAD~1 HEAD`를 쓴다.
 
 ## 0-1. 환경별 릴리즈 경로 (push 가능 여부가 환경마다 다름)
+
+> **legacy 참고(2026-10-21~)**: 릴리즈는 데스크톱 Claude Code에서만 한다. 아래는 Cowork·클라우드 세션의 push 실측 기록으로,
+> 그 세션에서는 push를 시도하지 말고 수정 지시 txt를 Drive `Skill/`에 남긴다.
 
 **push 가능 여부는 "클라우드냐 로컬이냐"로 갈리지 않는다. 세션마다 다르다. 추정하지 말고 테스트하라.**
 
@@ -130,7 +132,7 @@ master push
   → 마켓플레이스 트리 빌드 (skills/ → plugins/rootn-research/skills/, _shared/ 복사)
   → plugin.json version = 1.YYMMDD.<run_number> 자동 주입
   → 검증: 매니페스트 JSON 파싱 / 스킬 10개 이상 / _shared 존재 / 자사 이메일 0건
-  → 공개 repo rootnglobal/claude-skills 에 단일커밋 강제푸시(히스토리 0)
+  → 공개 repo rootnglobal/claude-skills (main)에 히스토리 누적 커밋(fast-forward, 260805~ 강제푸시 폐기)
 ```
 
 실패하는 지점은 사실상 둘뿐이다:
@@ -173,7 +175,7 @@ git add _meta/uploaded_manifest.json && git commit -m "meta: manifest sync"
 ## 새 스킬 추가 시
 1. `skills/<이름>/SKILL.md` 생성 — frontmatter에 `name`, `version: YYMMDD`, `description`.
 2. 워크플로우 첫 스텝에 `_shared/common-rules.md` 참조 한 줄.
-3. check_skills.py 통과 → 커밋 → 업로드 → manifest 갱신.
+3. check_skills.py 통과 → 커밋 → master push(= 배포). 업로드본·manifest는 만들지 않는다.
 
 ## Self-review
 - [ ] **편집 base가 SSOT인가?** (컨테이너 캐시본을 base로 쓰지 않았는가 — 0단계 diff 수행)

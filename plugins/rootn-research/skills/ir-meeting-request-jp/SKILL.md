@@ -1,12 +1,12 @@
 ---
 name: ir-meeting-request-jp
-version: 260804
-description: "일본 상장사에 IR(투자자관계) 미팅을 요청하는 영문+일문 병기 이메일을 자동으로 작성하고 Gmail 임시보관함에 저장하는 스킬. 일본 회사명이나 4자리 종목코드(예: 7203, 6758)를 입력하면 IR 담당자 이메일을 웹에서 검색하고, 정해진 템플릿에 맞춰 미팅 요청 이메일 초안을 Gmail에 저장한다. '일본 IR 미팅 요청', '일본 회사 미팅', 'JP IR meeting', '일본 기업탐방', 일본 4자리 종목코드(예: 7203T, 6758T)와 함께 IR/미팅 요청 맥락이 나오면 이 스킬을 사용할 것. 여러 회사를 한꺼번에 요청하는 경우에도 각각에 대해 이 스킬의 워크플로우를 반복 적용할 것."
+version: 261021
+description: "일본 상장사 IR 미팅 요청 메일(일본어+영어)을 작성해 Gmail 임시보관함에 저장하는 스킬. 회사명·4자리 코드로 IR 이메일을 찾고, 웹폼 전용이면 ir-webform으로 진행. 트리거: 일본 IR 미팅 요청, 일본 회사 미팅, JP IR meeting, 일본 기업탐방, 7203T 같은 코드와 미팅 요청. 여러 회사면 회사별 반복."
 ---
 
 # 일본 상장사 IR 미팅 요청 이메일 자동 작성 스킬
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 업로드본 SKILL.md를 즉석 수정하고 동일 diff를 SSOT repo(claude-skills)에 반영한다 (repo 미접근 환경이면 diff를 출력해 "다음 Cowork 세션에서 repo 반영 필요"로 flagging). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
  
 ## 개요
@@ -36,6 +36,7 @@ description: "일본 상장사에 IR(투자자관계) 미팅을 요청하는 영
    - 검색 방법: `"site:disclosure.edinet-fsa.go.jp {회사명}"` 또는 `"{회사명} 有価証券報告書 IR 連絡先"` 로 웹 검색
  
 **이메일을 끝까지 찾지 못한 경우:**
+- **IR 이메일이 비공개이고 IR 문의 웹폼만 운영하면 되묻지 말고 `ir-webform`으로 진행**한다(같은 언어 규칙·침묵기간 체크 적용, 기본 제출). 제출 후 Gmail 자동응답에서 IR 주소가 노출되면 회수해 follow-up용으로 보고한다.
 - 대표 이메일(info@, contact@ 등)이나 IR 문의 폼 URL을 대안으로 제시하되, IR 전담 이메일이 아님을 명확히 알린다.
 - 어떤 이메일도 찾지 못하면 사용자에게 직접 이메일 주소를 요청한다.
 - 찾은 이메일의 출처를 항상 함께 보고한다.
@@ -52,12 +53,19 @@ description: "일본 상장사에 IR(투자자관계) 미팅을 요청하는 영
   확인. **미등록 상태면 이 스킬에서 가입을 진행하지 않는다** — 한국 소재 운용사의
   등록 요건·비용은 별도 문의가 필요하므로, "みんせつ 기관 등록 검토"를 결과 보고에
   1줄 언급만 한다.
-- みんせつ 사이트 내 미팅 신청·폼 제출은 웹폼 제출이므로 사전 확인 대상
-  (common-rules 되돌릴 수 없는 작업 원칙).
+- みんせつ 사이트 내 미팅 신청도 IR outreach 웹폼과 동일하게 **기본 제출**(확인 화면 대조 후 送信,
+  common-rules §2의 IR outreach 웹폼 예외).
+
+### Step 1.5: 침묵기간(quiet period) 체크
+
+IR 캘린더(決算発表予定日)에서 **다음 결산발표일**을 확인한다. 오늘이 **분기말 다음 날 ~ 발표일** 사이면 본문 맺음말 앞에
+일본어 「決算発表（MM/DD）以降の日程でご調整いただけますと幸いです。」, 영어 "We would be glad to schedule the meeting after your earnings announcement on MM/DD." 를 각각 한 문장씩 넣는다. 발표일을 못 찾으면 넣지 않고 보고에 "발표일 미확인" 1줄.
  
 ### Step 2: 이메일 작성
  
-아래 템플릿을 사용하여 이메일을 작성한다. `{Company Name (English)}` 과 `{会社名}` 부분만 실제 회사명으로 교체한다. 나머지 문구는 그대로 유지한다 — 이것은 RootNGlobal의 표준 일본 IR 요청 양식이므로 임의로 변경하지 않는 것이 중요하다.
+**언어 규칙**: 본문은 **일본어 + 영어** 병기(일본어 먼저, 구분선 후 영어). 웹폼 경로에서 글자수 제한이 있으면 영어 파트를 삭제한다(ir-webform 전역 규칙).
+
+아래 템플릿을 사용하여 이메일을 작성한다. `{Company Name (English)}` 과 `{会社名}` 부분만 실제 회사명으로 교체한다(Step 1.5 침묵기간 문장은 해당 시에만 추가). 나머지 문구는 그대로 유지한다 — 이것은 RootNGlobal의 표준 일본 IR 요청 양식이므로 임의로 변경하지 않는 것이 중요하다.
  
 **제목:** `IRミーティングのご依頼 / IR Meeting Request – RootNGlobal Investors`
  
@@ -71,7 +79,7 @@ description: "일본 상장사에 IR(투자자관계) 미팅을 요청하는 영
  
 現在、{会社名}様の主要事業の現況および中長期的な成長戦略について、より深い理解を得た上で投資検討を進めたく、IRミーティングをお願いしたくご連絡差し上げました。
  
-ミーティングの形式（対面またはオンライン）および日程につきましては、貴社のご都合に合わせて柔軟に調整させていただきます。ご都合のよろしい日時をいくつかご提案いただけましたら、速やかにご返信いたします。
+ミーティングはオンライン（60分程度）を希望しております。日程につきましては、貴社のご都合に合わせて柔軟に調整させていただきます。ご都合のよろしい日時をいくつかご提案いただけましたら、速やかにご返信いたします。オンラインでのご対応が難しい場合は、質問書をメールでお送りし、ご回答をいただく形でも差し支えございません。
  
 事前にご質問票や追加資料が必要でございましたら、お気軽にお申し付けください。
 お忙しい中ご検討いただき、誠にありがとうございます。ご返信をお待ちしております。
@@ -87,7 +95,7 @@ We are RootNGlobal Investors, a long-only equity asset manager focused on long-t
  
 We are currently conducting investment research on {Company Name (English)} and would greatly appreciate the opportunity to have an IR meeting to gain a deeper understanding of your business operations and mid-to-long-term growth strategy.
  
-We are flexible regarding the meeting format (in-person or online) and scheduling. If you could kindly suggest a few available dates and times, we will promptly confirm.
+We would prefer an online call of about 60 minutes and are flexible regarding scheduling. If you could kindly suggest a few available dates and times, we will promptly confirm. If a live meeting is difficult, we're also happy to send a questionnaire by email and receive written answers.
  
 Should you require a questionnaire or any additional materials in advance, please do not hesitate to let us know.
  

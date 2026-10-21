@@ -1,7 +1,7 @@
 ---
 name: sheet-write-api
-version: 261021
-description: "임의의 Claude 세션이 화이트리스트된 구글 시트에 secret 인증만으로 안전하게 write 하는 범용 시트 write API 스킬(독립형 Apps Script 웹앱 SheetWriteAPI_v1.gs 를 curl doPost 로 호출). actions=ping/read/append/overwrite. \"시트에 써줘/추가해줘\", \"구글시트 append\", \"시트 값 덮어써\", \"범용 시트 API\", \"sheet write API\", 시트 id·탭과 함께 write/append/overwrite 맥락에서 사용. 단 jp_model_portfolio 거래는 jp-port-trade(2FA), 모델포트 셀 정정은 build B 로 — 이 API 로 하지 말 것. creds 는 Drive rootn_sheet_write_api.txt/registry. RootN 리서처 전용."
+version: 261021b
+description: "화이트리스트된 구글 시트에 secret 인증으로 write하는 범용 시트 API 스킬(Apps Script 웹앱 SheetWriteAPI_v1.gs를 curl doPost 호출, ping/read/append/overwrite). jp_model_portfolio 거래는 jp-port-trade, 모델포트 셀 정정은 build B로 — 이 API를 쓰지 않는다. 트리거: 시트에 써줘/추가해줘, 구글시트 append, 시트 값 덮어써, sheet write API."
 ---
 
 # sheet-write-api — 범용 시트 write API

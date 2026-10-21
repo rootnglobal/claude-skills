@@ -1,25 +1,12 @@
 ---
 name: comparative-investment-note
-version: 261021
-description: >
-  여러 종목(피어 그룹·테마 바스켓)을 한 번에 비교하는 Investment Note를 만드는 스킬.
-  기본 산출물은 Excel 1개이며, 첫 시트 '비교요약'에 N개 종목을 side-by-side로
-  세운(밸류에이션·실적·세그먼트·성장동인·공통 매크로 민감도) 비교표를 임베드하고,
-  그 뒤에 종목별 investment-note 모델 시트(연간·분기, P×Q 분해)를 함께 담는다.
-  종목별 자료 수집은 기존 ir-research-pipeline / ir-collertor / jp-research-collector /
-  investment-note 스킬을 그대로 불러 처리하고, 이 스킬은 (a) 바스켓 정의, (b) 종목 간
-  '비교 가능하도록' 항목·단위·매크로 가정을 표준화, (c) 비교 시트에서 종목 시트를
-  수식으로 끌어와 상대 비교·랭킹을 만드는 일을 담당한다. 드라이브 정리는
-  drive-folder-organizer를 불러 테마 폴더(예: '일본 에너지') 아래에 종목 폴더를 모은다.
-  "여러 종목 비교 노트", "피어 비교 모델", "종목 A vs B vs C 비교", "테마 바스켓 분석",
-  "comparative note", "동종업계 비교 투자노트", "상대가치 비교", 두 개 이상의
-  종목명·티커와 함께 비교/compare/peer/vs/바스켓/상대 맥락이 나오면 이 스킬을 사용할 것.
-  한국(DART)·미국(SEC)·일본(EDINET)·중국(CNINFO) 상장사 모두 지원. RootN 리서처 전용.
+version: 261021b
+description: "여러 종목(피어·테마 바스켓)을 비교하는 Investment Note(Excel): '비교요약' 시트에 밸류에이션·실적·세그먼트·매크로 민감도를 표준화해 side-by-side로 세우고 종목별 모델 시트를 수식으로 연결. 자료 수집은 기존 수집·노트 스킬 재사용. 트리거: 여러 종목 비교 노트, 피어 비교 모델, A vs B vs C, 테마 바스켓, 상대가치 비교, comparative note."
 ---
 
 # 비교 Investment Note 스킬 (Comparative Investment Note)
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년, 그리고 **판정 근거 검증 원칙(§11)**: 노출 정규화 %(절대치 단독 금지·개수% 함정)·계약구조 레이어(스팟 vs 장기)·노출 크기보다 구성(드래그 자산)·다축 분리·시황 방향 사전 검증(구조 vs 현재 delta)·수치 최신성. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 업로드본 SKILL.md를 즉석 수정하고 동일 diff를 SSOT repo(claude-skills)에 반영한다 (repo 미접근 환경이면 diff를 출력해 "다음 Cowork 세션에서 repo 반영 필요"로 flagging). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년, 그리고 **판정 근거 검증 원칙(§11)**: 노출 정규화 %(절대치 단독 금지·개수% 함정)·계약구조 레이어(스팟 vs 장기)·노출 크기보다 구성(드래그 자산)·다축 분리·시황 방향 사전 검증(구조 vs 현재 delta)·수치 최신성. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 
 RootN 리서처용. **2개 이상의 종목을 받아 하나의 Excel에서 비교 + 종목별 모델까지
