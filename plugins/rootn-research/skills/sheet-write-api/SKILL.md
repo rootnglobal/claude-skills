@@ -1,6 +1,6 @@
 ---
 name: sheet-write-api
-version: 261021b
+version: 261023
 description: "화이트리스트된 구글 시트에 secret 인증으로 write하는 범용 시트 API 스킬(Apps Script 웹앱 SheetWriteAPI_v1.gs를 curl doPost 호출, ping/read/append/overwrite). jp_model_portfolio 거래는 jp-port-trade, 모델포트 셀 정정은 build B로 — 이 API를 쓰지 않는다. 트리거: 시트에 써줘/추가해줘, 구글시트 append, 시트 값 덮어써, sheet write API."
 ---
 
@@ -10,7 +10,7 @@ description: "화이트리스트된 구글 시트에 secret 인증으로 write�
 
 ## 시스템 개요 (이 스킬이 SSOT — 매 세션 재설명 불필요)
 
-- 정체: **독립형** Apps Script 웹앱(`SheetWriteAPI_v1.gs`, SSOT rootnglobal/claude-skills-2 → skills/sheet-write-api/assets/). 모델포트 Code.gs·jp_model_portfolio 와 무관, clasp 별도 프로젝트. MCP 커넥터 아님 — curl `doPost` 로 호출.
+- 정체: **독립형** Apps Script 웹앱(`SheetWriteAPI_v1.gs`, SSOT rootnglobal/claude-skills-2 → `_apps/sheet_write_api/`(비공개)). 모델포트 Code.gs·jp_model_portfolio 와 무관, clasp 별도 프로젝트. MCP 커넥터 아님 — curl `doPost` 로 호출.
 - 목적: 어느 Claude 세션이든 **화이트리스트된** 구글 시트에 secret 만으로 read/append/overwrite.
 - 안전 2중 가드(무거운 2FA 폴링 없음):
   1. **화이트리스트가 로그·백업을 성역화** — API 가 overwrite 불가, append/read 만. 파생 시트(홀딩스·NAV·작업시트)만 자유 overwrite(실수 용인, 복구는 로그→재계산·build F 백업).
@@ -42,6 +42,7 @@ description: "화이트리스트된 구글 시트에 secret 인증으로 write�
 - jp_model_portfolio 거래 입력 → `jp-port-trade`(텔레 토큰 2FA).
 - 모델포트 셀 정정 → build B(수정기능, 2FA·이력). raw overwrite 로 성역(로그) 금지.
 - 화이트리스트 밖 시트 → 데스크톱 명시 등록 후에만. 와일드카드 전체허용 없음.
+- jp_model_portfolio 읽기(예: GitHub Actions 타깃 탭) → 모델포트 자체 읽기 전용 export 웹앱(`_apps/jp_model_portfolio`, `exportApi_`). SWAPI는 append를 항상 허용해 읽기 전용 등록이 안 되므로 쓰지 않는다.
 
 ## 보안 규칙
 
@@ -50,4 +51,4 @@ description: "화이트리스트된 구글 시트에 secret 인증으로 write�
 
 ## 서버 코드·설치
 
-- 서버는 **독립 clasp 프로젝트**(모델포트 clasp 밖). canonical 사본 = SSOT assets 의 `SheetWriteAPI_v1.gs`·`appsscript.json`. ⚠ 2026-10-21 기준 repo·Drive 어디에도 사본이 없다 — 데스크톱 clasp 프로젝트에서 `skills/sheet-write-api/assets/`로 반입 필요(반입 전까지 서버 수정은 clasp 원본에서). 설치·화이트리스트 구성은 `INSTALL_SheetWriteAPI_v1.md`(데스크톱 1회): swapi_setup() → 웹앱 배포(익명) → swapi_addSheet(id,name,allowOverwrite,sheetsCsv,protectedCsv) → registry 등록.
+- 서버는 **독립 clasp 프로젝트**(모델포트 clasp 밖). canonical 사본 위치 = SSOT `_apps/sheet_write_api/`(`SheetWriteAPI_v1.gs`·`appsscript.json`, 공개 배포 밖 — 화이트리스트 로직이 public에 노출되지 않게). ⚠ 2026-10-23 기준 repo·Drive·데스크톱 clasp 계정의 Apps Script 목록 어디에도 서버가 없다 — 호출 전 ping으로 설치 여부부터 확인, 원본을 찾으면 `_apps/sheet_write_api/`로 편입. 설치·화이트리스트 구성은 `INSTALL_SheetWriteAPI_v1.md`(데스크톱 1회): swapi_setup() → 웹앱 배포(익명) → swapi_addSheet(id,name,allowOverwrite,sheetsCsv,protectedCsv) → registry 등록.
