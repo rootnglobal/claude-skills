@@ -1,6 +1,6 @@
 ---
 name: api-key-registry
-version: 261021b
+version: 261023
 description: "RootN API 키·인증키 레지스트리(구글시트 'RootN API Keys') 조회·등록 스킬. API 키·서비스키·토큰이 필요하면 사용자에게 묻기 전에 먼저 조회하고, 401/Unauthorized/키 미설정 오류 때도 사용. 새 키를 받으면 등록을 제안. 트리거: API 키 어디 있어, 인증키 등록, 키 저장, 서비스키 필요, 키 관리, 토큰 찾아줘."
 ---
 
@@ -27,8 +27,10 @@ RootN의 모든 API 키·토큰의 단일 참조점(SSOT)은 구글시트 **'Roo
 Drive MCP는 구글시트 셀 수정이 불가하다(파일 신규 생성만 가능). 절대 'RootN API Keys' 시트를 새 파일로 다시 만들지 말 것(레지스트리 분열 금지). 등록은 아래 경로를 우선순위 A→B→C로 사용:
 
 - **A. 레지스트리 API에 POST (기본)**: RootN Registry API(Apps Script Web App)에 POST해서 행을 upsert한다.
-  - 웹앱 URL·secret: Drive `Investment Research/_config/rootn_registry_api.txt` 참조.
-  - 요청: `POST {webapp_url}`, JSON body `{ "secret": "...", "action": "upsert", "rows": [ {service, key_name, key_value, account, issued, limits, used_by, notes} ] }` (rows 최대 20개). upsert는 service+key_name 일치 행이 있으면 갱신(빈 필드는 기존값 유지), 없으면 append.
+  - 웹앱 URL·secret: Drive `Investment Research/_config/rootn_registry_api_v2.txt`(`url=`, `secret=`) 참조.
+    - 폴백 없음: 구 `rootn_registry_api.txt`는 2026-10-23 secret 교체로 무효(`unauthorized`). v2 파일이 없으면 B로.
+  - 요청: `POST {webapp_url}`, JSON body `{ "secret": "...", "action": "upsert", "rows": [ {service, key_name, key_value, account, issued, limits, used_by, notes} ] }` (rows 최대 20개, 셀 5000자). upsert는 service+key_name 일치 행이 있으면 갱신(빈 필드는 기존값 유지), 없으면 append.
+  - 등록 확인: `{"secret":"...","action":"find","service":"...","key_name":"..."}` → 일치 행 메타(row·account·issued·used_by·has_value). key_value 는 돌려주지 않는다. 오류: `unauthorized`(secret 불일치) · `not configured` · `internal error`.
   - curl 사용 시: 응답이 302로 `script.googleusercontent.com/macros/echo?...`를 가리키는데, `curl -L`이 POST를 그대로 재전송해 405가 날 수 있다. Location 헤더를 직접 받아 그 URL로 **GET** 재요청할 것.
   - 웹앱이 403("You need access")을 내면: 조직 정책이 아니라 스크립트 소유자가 Apps Script 편집기에서 함수를 1회도 실행하지 않아 OAuth 동의(SpreadsheetApp 권한)가 안 된 경우가 흔하다 — `script.google.com/d/{script_id}/edit`에서 함수 1회 수동 실행 후 재시도(재배포 불필요).
   - 등록 후 read_file_content로 재확인.
