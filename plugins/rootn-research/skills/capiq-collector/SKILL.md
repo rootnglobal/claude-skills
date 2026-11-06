@@ -1,6 +1,6 @@
 ---
 name: capiq-collector
-version: 261021b
+version: 261106
 description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수집하는 스킬: 어닝콜 transcript 최근 2년→IR/transcripts/, 셀사이드 리포트→리서치/, 컨센서스 상세 Excel→리서치/consensus/, Key Developments·comps(요청 시). CapIQ 로그인 필요. 트리거: CapIQ, Capital IQ, 캡아이큐, transcript 받아줘, CapIQ 컨센서스/셀사이드. 파이프라인·jp-research-collector에서도 호출."
 ---
 
@@ -9,8 +9,8 @@ description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수�
 > **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`를 읽고 전 구간에 적용한다 — fail-fast,
 > 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년.
 > 태스크 완료 후 스킬 피드백 루프: 새로 확인된 CapIQ 경로·엘리먼트·우회법은
-> `references/capiq-paths.md`에 즉시 기록하고 SSOT repo(claude-skills-2)에 반영한다
-> (repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다).
+> 수정 지시 txt로 Drive `Skill/` 폴더에 남긴다(`references/capiq-paths.md` 반영은
+> 업무 데스크톱 Claude Code가 SSOT repo claude-skills-2에서 한다, 공통 규칙 §12).
 
 미국·중국 종목 셀사이드와 일본 중소형주 transcript 공백 보완에 특히 유용하다.
 
@@ -114,4 +114,4 @@ description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수�
 - entitlement 범위 (열람 가능 브로커, Aftermarket 여부, 잠긴 항목 패턴)
 - 일본 중소형 transcript 커버리지 하한 (설계 오픈 이슈 #2)
 
-기록은 SSOT repo(claude-skills-2)에 반영한다(repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다).
+기록은 수정 지시 txt로 Drive `Skill/` 폴더에 남긴다(repo 반영은 업무 데스크톱 Claude Code, 공통 규칙 §12).

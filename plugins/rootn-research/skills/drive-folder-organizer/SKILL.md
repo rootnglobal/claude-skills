@@ -1,12 +1,12 @@
 ---
 name: drive-folder-organizer
-version: 261021
+version: 261106
 description: "Drive 'Investment Research' 종목 폴더를 표준 구조로 정리하는 스킬: 파일을 IR/·리서치/ 하위폴더로 분류하고 중복('(1)'·'사본')을 제거하며 폴더명을 '[종목명] (티커)'로 통일. 트리거: 폴더 정리, 드라이브 정리, 종목 폴더 정리, IR 폴더 분류, 하위폴더 분리, 중복 파일 제거, 파일 분류, Investment Research 정리."
 ---
 
 # 드라이브 종목 폴더 정리 스킬 (Drive Folder Organizer)
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다(SKILL.md 수정은 업무 데스크톱 Claude Code만 SSOT repo claude-skills-2에서 한다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 
 구글 드라이브 `Investment Research` 아래 종목 폴더를 표준 구조로 정리하는 워크플로우.

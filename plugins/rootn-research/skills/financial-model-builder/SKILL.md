@@ -1,12 +1,12 @@
 ---
 name: financial-model-builder
-version: 261021c
+version: 261106
 description: "Bloomberg Excel 템플릿 위에 종목 financial model을 만드는 스킬: IR·셀사이드·뉴스·웹 리서치를 통합해 지역·제품·고객 segment별 매출/이익, 수출입·수주잔고 등 선행지표, 성장 원천(매출·mix·마진)과 가속·지속성을 숫자로 분해. 한·미·일·중 지원. 트리거: 재무모델, financial model, 실적 모델, segment 분해, growth 분해, 어닝 모델, 수주잔고 모델."
 ---
 
 # Financial Model Builder
 
-> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 SSOT repo(claude-skills-2)의 SKILL.md를 수정한다(설치본·업로드본 수정 금지; repo 접근 불가 세션이면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
+> **공통 규칙**: 작업 시작 전 `_shared/common-rules.md`(로컬 실행 시 스킬 폴더 기준 `../_shared/common-rules.md`)를 읽고 전 구간에 적용한다 — fail-fast, 자동진행/사전확인, ASCII 파일명, 드라이브 3점 검증, 신뢰도 표기, 수집기간 기본 2년. 그리고 **태스크 완료 후 스킬 피드백 루프(§12)**: 최종 산출물 전달 직후(태스크 단위 1회) 새로 확인된 소스·URL·우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분을 점검한다. 개선점이 있으면 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다(SKILL.md 수정은 업무 데스크톱 Claude Code만 SSOT repo claude-skills-2에서 한다). 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 
 ## 이 스킬이 답하려는 질문
