@@ -87,3 +87,10 @@
 - **폴더구조·title 탐색은 `search_files`에 `excludeContentSnippets:true`.** 콘텐츠 스니펫이 응답을 폭증시켜 토큰 초과를 유발한다. 스니펫은 본문 검색(fullText)이 목적일 때만 켠다.
 - **docx는 .docx 원형을 유지해 올린다**: `base64Content` + `contentMimeType`=`application/vnd.openxmlformats-officedocument.wordprocessingml.document` + `disableConversionToGoogleType:true`. (생략하면 Google Docs로 변환돼 서식이 깨진다.) 업로드 후 §4대로 id·수정시각·용량 3점 검증.
 - **soffice로 렌더한 미리보기 이미지는 Windows outputs 경로로 Read한다.** `/sessions/...`(기기 마운트) 경로는 Read 툴로 못 읽으므로, device로 commit된 사용자 디스크 outputs 경로를 지정해 읽는다.
+
+## 14. 반복 작업은 코드로, 세션에는 요약만
+- 같은 절차를 2회 이상 반복하거나 결과 데이터가 큰 작업(다운로드·파싱·엑셀 빌드·업로드 검증, 전수 스캔, Drive·Sheets 대량 읽기)은 MCP·도구 결과를 컨텍스트로 흘리지 않고 스크립트로 처리해 요약만 읽는다. 1회성·소량 조회는 MCP 그대로.
+- 스킬마다 매번 새로 짜는 코드는 `skills/<name>/scripts/` 실행 파일로 고정하고, SKILL.md에는 언제·어떤 인자로 실행하고 출력의 어느 필드를 읽는지만 둔다.
+- 출력 규약: stdout은 요약 JSON 1줄(`ok`·건수·실패 항목·산출 파일 경로), 원데이터는 파일로. `_ops/` 트래커와 같다.
+- Chrome 수집: 로그인 탭에서 쓰는 DOM 탐색·다운로드 JS는 `scripts/<site>_snippet.js`로 두고 `javascript_tool`로 그대로 실행한다. 사이트 구조가 바뀌어 실패할 때만 탐색으로 전환하고, 새로 통한 snippet은 §12 경로(데스크톱이면 커밋, 다른 세션이면 Skill 폴더 지시 txt)로 남긴다.
+- 일본 재무·대주주·대량보유: EDINET DB(무료 100 req/일, 질문 1건에 6~10 req). 대화형 개별 종목은 MCP `edinetdb`(경량 `/mcp/lite`), 전수 스캔은 REST(`X-API-Key`, 'RootN API Keys' 시트 `EDINETDB_API_KEY`) 또는 EDINET API v2(§9). 제3자 가공 데이터라 판정에 쓰는 핵심 숫자는 EDINET API v2 원천과 대조하고, 한도에 걸리면 EDINET API v2로 넘어간다.
