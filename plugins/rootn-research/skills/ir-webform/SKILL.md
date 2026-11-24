@@ -1,6 +1,6 @@
 ---
 name: ir-webform
-version: 261106
+version: 261124
 description: "한·일·중·미 상장사 IR 문의 웹폼을 찾아 Claude in Chrome으로 IR 미팅 요청을 작성·제출하는 스킬(확인 화면 대조 후 기본 제출). 공개 IR 이메일이 없고 웹폼만 있으면 되묻지 말고 바로 실행. 트리거: 웹폼, 폼 작성, 문의 양식, 컨택 폼, contact form, IR 문의, 투자자 문의."
 ---
 
@@ -31,8 +31,10 @@ description: "한·일·중·미 상장사 IR 문의 웹폼을 찾아 Claude in 
 
 다음 조건 중 하나라도 해당하면 **사용자에게 추가 확인 질문을 하지 말고 곧바로 Step 1로 진행**한다:
 
-- 공개된 IR 이메일 주소를 찾지 못한 경우
+- 공개된 IR 이메일 주소를 찾지 못한 경우(Gmail 발송 이력·IR 자료 연락처 확인 포함 — `ir-meeting-request-jp`/`ir-meeting-request` Step 0~1)
 - 회사가 이메일 없이 웹 문의 폼만 운영하는 경우
+
+호출 스킬의 이메일 탐색(0~6단계)을 마치기 전에는 웹폼을 찾았다는 이유만으로 진입하지 않는다. Gmail 발송 이력이 있으면 웹폼 대신 그 스레드에 follow-up 답장 초안을 만든다(`ir-meeting-request-jp` Step 0).
 
 즉, "공개 이메일이 없는데 웹폼으로 진행할까요?" 같은 확인 질문은 생략한다. 폼을 찾는 즉시 작성에 들어간다.
 (작성에 이어 제출까지 기본 진행한다 — 확인 화면 대조 후 送信. 개요 참조.)
@@ -61,13 +63,14 @@ IR 캘린더(IR 일정·決算発表予定日·earnings date)에서 **다음 결
 `mcp__Claude_in_Chrome__navigate`로 해당 URL에 접근한 뒤 `get_page_text`로 페이지 내용을 확인해 다음을 파악한다:
 
 - 폼이 존재하는가? (없으면 사용자에게 알리고 종료)
+- **폼 종료 감지**: 임베드 iframe 또는 top-level 폼 본문이 「受付を終了」「受付を締め切りました」「登録受付を終了しました」 등이면 폼 없음으로 판정하고 즉시 중단한다. 폴백 순서: Gmail 발송 이력의 수신 주소 → 대표 문의폼(제품 문의폼에 IR 문의를 섞지 않는다) → みんせつ(`ir-meeting-request-jp` 참조).
 - 어떤 언어로 작성되어 있는가? (한국어 / 영어 / 일본어 / 중국어)
 - 어떤 필드가 있는가? (이름, 이메일, 연락처, 회사명, 문의 유형, 제목, 내용 등)
 - 문의 유형 드롭다운이 있는가? → "IR" 또는 "투자자" 관련 옵션 선택. **개인/기관 구분이 있으면(예: 個人投資家 vs アナリスト・機関投資家) RootN은 기관투자자이므로 '아날리스트·기관투자자' 계열을 선택한다.**
 
-**임베디드(cross-origin) 마케팅 폼 처리 — 핵심 우회법**: IR 폼이 Pardot/SATORI 등 마케팅 플랫폼 iframe(예: `go.{회사도메인}` 같은 별도 서브도메인/도메인)으로 삽입된 경우, 부모 페이지에서는 필드가 cross-origin이라 `form_input`·`javascript_tool`로 접근되지 않고 `read_page`/`find`도 필드를 온전히 못 잡으며 native `<select>` 옵션은 좌표 스크린샷으로도 안 보인다. 이때는:
-1. 부모 DOM에서 `document.querySelectorAll('iframe')`의 `.src`로 폼 iframe URL을 확인한다.
-2. 그 **`src` URL을 새 탭(또는 같은 탭)에서 직접 열어** top-level로 렌더한다 — 그러면 same-origin이 되어 JS로 필드 조작이 가능하다.
+**임베디드(cross-origin) 마케팅 폼 처리 — 핵심 우회법**: IR 폼이 Pardot/SATORI/SPIRAL(`reg**.smp.ne.jp/regist/is?SMPFORM=...`) 등 마케팅·폼 플랫폼 iframe(예: `go.{회사도메인}` 같은 별도 서브도메인/도메인)으로 삽입된 경우, 부모 페이지에서는 필드가 cross-origin이라 `form_input`·`javascript_tool`로 접근되지 않고 `read_page`/`find`도 필드를 온전히 못 잡으며 native `<select>` 옵션은 좌표 스크린샷으로도 안 보인다. 이때는:
+1. 부모 DOM에서 `document.querySelectorAll('iframe')`의 `.src`로 폼 iframe URL을 확인한다. `javascript_tool` 반환값에 쿼리스트링이 들어가면 `[BLOCKED: Cookie/query string data]`로 막히므로 `src.split('?')[0]`만 반환해 확인하고,
+2. 이동은 JS 안에서 `location.href = iframe.src`로 처리해 **`src` URL을 top-level로 렌더한다** — 그러면 same-origin이 되어 JS로 필드 조작이 가능하다.
 3. `javascript_tool`로 `input,textarea,select`를 열거하고 `label[for=id]`로 라벨을 매핑해 각 필드의 name/id를 파악한다(필드 name이 `<siteid>_<fieldid>pi_...` 형태로 난독화되어 있어 라벨 매핑이 필수).
 4. 값 설정 후 **반드시 `input`·`change`·`blur` 이벤트를 dispatch**해야 마케팅 플랫폼 검증이 입력을 인식한다(값만 대입하면 검증 실패로 제출이 막힌다).
 5. 제출도 이 top-level 폼에서 (사용자가) 하면 동일 엔드포인트로 전송되므로 임베드 페이지로 되돌아갈 필요가 없다.

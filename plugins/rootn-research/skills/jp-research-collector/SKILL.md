@@ -1,6 +1,6 @@
 ---
 name: jp-research-collector
-version: 261106
+version: 261124
 description: "일본 종목 리서치 자료 수집 스킬: Kabutan·Minkabu·株予報Pro 컨센서스, 四季報 독자예상, 공식 IR 결산설명자료 PDF, Shared Research·IR Agents 취재노트·개인투자자 IR Q&A를 모아 종목명_티커_YYMM 폴더로 정리. 트리거: 일본 종목 리서치, 일본주 자료 수집, 日本株リサーチ, 株探, 四季報, Shared Research, 일본 결산설명회, 4자리 코드와 자료 요청."
 ---
 
@@ -49,6 +49,10 @@ description: "일본 종목 리서치 자료 수집 스킬: Kabutan·Minkabu·�
 ---
  
 ## Step 0: 사전 준비
+
+### 증분 수집 모드 (기존 종목 폴더가 있을 때)
+
+기존 종목 폴더가 있으면 `collection_summary`·`ir_index`의 마지막 수집일 이후 delta만 수집한다. 기존 파일과 용량을 비교해 ±수십 바이트면 재생성본으로 보고 재업로드를 생략한다. 요약 파일은 `_YYMM` 신규 이름으로 만든다.
  
 ### 저장 폴더 확인
  
@@ -120,6 +124,8 @@ Chrome navigate → https://minkabu.jp/stock/{종목코드}/analyst_consensus
 - 개인 투자자 예상 vs 프로 예상 비교
  
 `consensus_minkabu.txt`로 저장한다.
+
+- `analyst_consensus`가 404('ページが見つかりませんでした')면 오류가 아니라 애널리스트 커버리지 0 신호로 기록한다.
  
 ### 2-3. Kabutan (kabutan.jp) — 재무 데이터 (★ 가장 풍부한 데이터)
  
@@ -163,8 +169,9 @@ CapIQ 미가용이면 기존 2-1~2-2(Kabuyoho/Minkabu)가 컨센 소스가 된�
 ```
 
 > **계정 정보**: Drive `Investment Research/_config/toyokeizai_account.txt` 참조.
-> **계정·비밀번호를 이 문서에 직접 기재하지 않는다.** 동시 로그인 제한이 있을 수
-> 있으므로 로그인 실패 시 1회만 재시도하고 사용자에게 알린다.
+> **계정·비밀번호를 이 문서에 직접 기재하지 않는다.** 비밀번호 입력은 에이전트 안전 규칙상 대행할 수 없다 —
+> 사용자가 Chrome에서 먼저 로그인해 둬야 한다. 비로그인(독자예상·코멘트 공란)이면 공개 범위만 저장하고
+> "사용자 로그인 후 재수집"으로 flag한다(재시도하지 않는다).
 
 수집할 정보 (`shikiho_{종목코드}.txt`로 저장):
 - **四季報 독자예상** (최신호): 매출·영업익·순이익·EPS 예상 (당기·내기) — 회사계획과의 괴리 방향 명기
@@ -362,6 +369,22 @@ ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
 - **연도 전환**: 기본 노출은 최근 2개 회계연도(`max_years:2`). 그 이전은 연도 `<select>`(ref)를 `form_input(ref, value="YYYY")`로 전환 후 재-read. `read_page`가 ~28항목에서 truncate되므로 연도별 단독 조회로 회피한다.
 - 판별: IR 라이브러리 페이지 소스에 `WllIrLibrary`·`xj-storage` 문자열이 있으면 이 절차로 바로 간다(앵커 스캔으로 0건 나와도 "자료 없음" 아님).
 
+### 3-1d. irpocket 위젯 IR 라이브러리
+
+- **증상**: IR 라이브러리 정적 HTML에 PDF 링크 0건, 소스에 `//irpocket.com/{code}/irpocket/loader_*.js`가 있다.
+- **처리**: 브라우저 불필요. 데이터 피드(JSONP, `window.ir20handler({...})`)를 curl로 받아 괄호 안을 `json.loads`한다.
+  - IR 라이브러리 전체: `https://xml.irpocket.com/{code}/JS/ir-all-all.js` (category_name·published·title·link)
+  - 적시공시(補足説明資料·業績修正·中計 등): `https://xml.irpocket.com/{code}/JS/release-all-latest-12m.js`, 과거연도 `release-all-12m-{YYYY}01.js`
+  - 영문: `ir-entan-all.js`, `ir-enmeet-all.js`
+  - 피드 이름은 `config_r*.js`의 `rule:` 블록에서 확인. link는 `//pdf.irpocket.com/C{code}/...` → `https:`를 붙여 curl 200.
+- 決算補足説明資料는 ir-all-all이 아니라 release 피드에만 있는 경우가 있다(3040 실측) → 두 피드를 모두 확인한다.
+
+### 3-1e. eir-parts 위젯 IR 라이브러리
+
+- **증상**: WordPress 등 IR 라이브러리 정적 HTML에 PDF 링크 0건, eir-parts JS 위젯이 목록을 렌더한다.
+- **처리**: 전체 목록 JSON(JSONP `eolparts_announcement_N(...)`)을 curl로 받는다: `https://ssl4.eir-parts.net/V4Public/EIR/{code}/ja/announcement/announcement_{parts_id}.js` — `item[]`: format_date·title·link·news_type·doc_cat·file_size.
+- `parts_id`는 회사별로 다르다(2395는 2, 1은 404) → 1~5를 순서대로 시도. 클라우드 egress가 허용된 환경에서 curl 200.
+
 ### 3-2. CapIQ transcripts — transcript 1차 소스 (Chrome 가용 시)
 
 Chrome에 CapIQ 로그인 상태면 `capiq-collector` §2-2 절차로 earnings call transcripts
@@ -384,6 +407,9 @@ WebSearch → "{회사명} site:finance.logmi.jp 決算説明会"
 3. `transcript_YYYY_Q{n}.txt` 형식으로 저장
 
 > **주의**: `get_page_text`가 타임아웃(45초)되면 `read_page`를 대신 사용한다.
+
+- 회사 `irmovie.html` 등에 logmi 기사 링크가 모여 있는 경우가 많다 → 검색보다 먼저 스캔한다.
+- curl 200으로 받을 수 있으나 본문은 'ここから先は会員登録(無料)で' 이후 잘린다(전반부+일부 Q&A). 'もっとみる' 이후 푸터는 지우고 파일 상단에 `partial`을 표기한다.
  
 ---
  
@@ -398,6 +424,8 @@ Shared Research는 약 250개 일본 상장사에 대한 독립적인 기업 분
 WebSearch → "{회사명} site:sharedresearch.jp"
 ```
 결과에 `sharedresearch.jp/ja/companies/{종목코드}` URL이 있으면 커버리지에 포함.
+
+**로그인 전에 임베드 본문부터**: `https://sharedresearch.jp/ja/companies/{code}` 페이지 HTML(curl 200, 약 3.7MB)에 리포트 본문 HTML이 JSON 문자열로 통째 임베드돼 있다(로그인 불필요). 가장 긴 JSON 문자열을 `json.loads` → BeautifulSoup으로 텍스트화하면 전문을 얻는다(3040: 약 14만 자). PDF 다운로드·로그인은 이 경로가 실패할 때만.
 
 **로그인 절차 (★ React 사이트이므로 특별한 처리 필요):**
 
@@ -525,6 +553,9 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
    개별 파일을 연속 다운로드하면 Chrome이 중간에 차단하므로, 건수가 5건을 넘으면 무조건 이 방식을 쓴다.
    (실측: 38건/69MB, 20건/7.4MB 각각 1회 성공)
 
+   - URL은 페이지의 실제 `a.href`를 그대로 쓴다. 경로 조각을 `split()`으로 재조립하면 실호스트가 다른 경우(예: JT 이벤트 PDF가 `/media/news/` 아래) 404가 난다.
+   - 사이트에 따라 JSZip blob 저장이 막힌다(jti.co.jp: `a.click()`·실제 클릭 모두 저장 안 됨, 2026-11 3회). 1회 실패하면 PDF 링크 목록만 남기고 사용자 수동 다운로드로 넘긴다.
+
    ```javascript
    // 1) 라이브러리 로드 (cdnjs 허용 확인됨). 페이지를 navigate하면 날아가므로 그때마다 재로드.
    await new Promise((res, rej) => { const s = document.createElement('script');
@@ -554,13 +585,14 @@ Kabu Berry: https://kabuberry.com/ (행사 목록) + YouTube "KabuBerry Channel"
      따로 뽑아 확인하고, 전량 성공이면 실패 목록이 빈 배열로 나온다.
    - 파일명은 반드시 ASCII (`ir_qa_FY2026Q2.pdf` 등). 일본어 파일명은 zip 압축 해제 시 깨진다.
    - zip은 사용자의 **Chrome 다운로드 폴더**(Drive 연동 폴더인 경우가 많음)에 떨어진다.
-     컨테이너에서는 확인할 수 없으므로 **결과 보고에 "압축 해제 필요"와 예상 파일명을 반드시 명시**한다.
+     컨테이너에서는 확인할 수 없으므로 **결과 보고에 "zip N개 → 종목 폴더 IR/에 압축 해제·이동 필요"와 예상 파일명을 고정 문구로 명시**한다(빠지면 자료가 Drive 종목 폴더에 안 들어간 채 끝난다).
+   - 데스크톱 브리지(`device_bash`)가 가용하면 다운로드 폴더의 zip을 Drive 동기화 폴더의 종목 `IR/`로 풀어 옮기고, 보고에는 이동 결과만 쓴다.
 
 3. **★pdf.js 텍스트 추출 → Blob 다운로드 (토큰 절약의 핵심)**
 
    質疑応答要旨·補足資料처럼 텍스트가 본체인 PDF는 브라우저에서 추출한다.
-   **추출한 전문을 툴 출력으로 회수하지 말 것** — `javascript_tool` 출력은 일본어 기준 약 1,700자에서 잘리므로,
-   3만 자짜리 자료를 끌어오려면 15회 이상 호출해야 해서 토큰이 폭증한다.
+   **추출한 전문을 툴 출력으로 회수하지 말 것** — `javascript_tool` 출력은 언어와 무관하게 약 1,000자에서 잘리므로(2026-11 실측),
+   3만 자짜리 자료를 끌어오려면 30회 이상 호출해야 해서 토큰이 폭증한다.
 
    ```javascript
    await new Promise((res, rej) => { const s = document.createElement('script');
@@ -706,7 +738,9 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 - **ログミーFinance 페이지 로딩 타임아웃** (45초): `get_page_text` 대신 `read_page`(filter: "all", depth: 5)를 사용.
 - **종목코드로 검색 안 됨**: 일본어 정식 회사명으로 재검색 시도. 예: "노무라마이크로" → "野村マイクロ・サイエンス"
 - **FISCO 리포트 없음**: 정상. 대부분의 종목에 무료 FISCO 리포트는 없다. 빠르게 skip.
-- **四季報 데이터가 비어 보임**: 로그인 세션 만료 가능성. `id.toyokeizai.net/sol/`에서 재로그인 1회 시도, 실패 시 flagging 후 skip. 계정은 Drive `_config/toyokeizai_account.txt`.
+- **四季報 데이터가 비어 보임**: 비로그인·세션 만료. 비밀번호 입력은 대행 불가 → 공개 범위만 저장하고 "사용자 로그인 후 재수집"으로 flag(재시도 금지, §2-5).
+- **get_page_text가 한국어로 반환됨**: Chrome 자동번역 상태. 숫자는 영향 없으나 고유명사·코멘트를 인용할 때는 원문을 확인한다.
+- **Claude in Chrome 사이트 권한 거부**(예: kabuyomi.jp 읽기 거부, capitaliq.spglobal.com javascript 거부 후 원래 탭으로 복귀): 1회로 skip하고 재시도하지 않는다. 보고에 "사이트 권한 필요"로 flag.
 - **IR Agents 기사가 잠김**: 유료회원 전용 또는 업종 열람 제한. 무리하게 우회하지 말고 제목·링크만 기록 후 구독 검토로 보고.
 - **Kabu Berry·湘南 Q&A 텍스트를 못 찾음**: 행사 자체가 없거나 영상만 공개된 경우. 해당 회사 IR note(`note.com/{회사}_ir`)를 한 번 더 확인하고 없으면 링크만 기록.
 - **공식 IR 사이트 도메인 불명**: WebSearch로 `"{회사명} IR 投資家情報"` 검색하여 정확한 도메인 확인. 예: 노무라마이크로는 `nomura-nms.co.jp` (nomura-ms.co.jp가 아님).
@@ -715,10 +749,10 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 - **IR 라이브러리에 결산설명자료가 없음**: §3-1의 앵커 텍스트 스캔 + 후보 URL HEAD 판별 2단계를 쓸 것. "없음"으로 단정하기 전에 IR 톱·event 페이지까지 훑는다.
 - **PDF 링크가 0건 추출됨**: `<details>` 아코디언이 접혀 있을 가능성이 가장 높다. `d.open = true` 후 재시도. 그래도 0건이면 JS 렌더링 페이지이므로 `fetch` + DOMParser가 아니라 **실제 navigate 후** 추출해야 한다.
 - **Chrome 연속 다운로드가 중간에 멈춤**: 브라우저의 다중 다운로드 차단. §5-2 JSZip 1회 다운로드로 전환.
-- **javascript_tool 출력이 중간에 잘림**: 일본어 기준 약 1,700자가 한계. 전문은 Blob 다운로드로 사용자 폴더에 떨구고, 툴 출력으로는 헤딩·문항 머리·핵심 수치만 정규식으로 뽑는다.
+- **javascript_tool 출력이 중간에 잘림**: 언어와 무관하게 약 1,000자가 한계(2026-11 실측). 전문은 Blob 다운로드로 사용자 폴더에 떨구고, 툴 출력으로는 헤딩·문항 머리·핵심 수치만 정규식으로 뽑는다.
 - **cdnjs 스크립트 로드 실패**: 해당 사이트 CSP가 외부 스크립트를 막는 경우. IR 사이트는 대체로 허용되므로, 막히면 CSP가 느슨한 다른 자사 페이지(월차 페이지 등)로 이동해 같은 작업을 수행한다.
 - **지주회사 전환 종목의 과거 데이터 단절**: 티커가 바뀌었으면(예: 日本通運 9062 → NIPPON EXPRESS HD 9147, 2022.1 株式移転) 전환 전 공시는 구 법인명으로 EDINET에 있고, 결산기 변경이 겹치면 변칙 결산(예: 2021년 4~12월 9개월)이 섞인다. 회사가 접합해 공표하는 장기 재무 Excel이 있으면 그것을 1차 소스로 쓴다.
-- **순수 클라우드 세션에서 Drive 대용량 PDF 업로드 불가**: 커넥터 인라인 업로드 한도(공통 규칙 §9, ≲30KB)로 PDF는 못 올린다. 텍스트 산출물(`*.txt`·요약)만 MCP로 업로드하고, PDF는 zip으로 묶어 사용자에게 전달 + 요약 '미업로드' 절에 flag(업로더·동기화 폴더가 있으면 §9 방법 D 우선).
+- **순수 클라우드 세션에서 Drive 대용량 PDF 업로드**: 커넥터 `create_file`은 파일 참조(`sha256:<hex>:<절대경로>`) 방식이면 파일 약 3MB까지 올라간다(공통 규칙 §9). 그보다 큰 PDF는 zip으로 묶어 사용자에게 전달 + 요약 '미업로드' 절에 flag(업로더·동기화 폴더가 있으면 §9 방법 D 우선). 사례: 3040 補足説明資料 8건·中計 PDF 3.5~7.6MB 미업로드.
 - **built-in 브라우저(`mcp__remote-devices__Claude_Browser`)**: `javascript_tool`의 eval/`console.log`가 값을 반환하지 않음(undefined) → DOM 추출은 `read_page(filter=links/interactive)`를 쓴다. `form_input`은 elements 배열이 아니라 flat `{ref, value}` 스키마. (Claude in Chrome은 `javascript_tool` 반환값 정상)
 - **xj-storage PDF가 curl로 안 받아짐**(드묾): 브라우저에서 링크를 클릭하지 말고 `read_page`로 얻은 href를 그대로 curl. 200바이트 미만이면 hash/docid를 재확인한다(§3-1c).
 
@@ -735,3 +769,6 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 | NIPPON EXPRESS HD | 9147 | nipponexpress-holdings.com | **`/ja/ir/event/data-room/`** (★IR資料室 아님. `<details>` 아코디언 — 펼쳐야 링크 추출됨. PDF는 pdf.irpocket.com/C9147/… 난수 경로. 월차 `/ja/ir/finance/monthly/`, 물량 KPI `/ja/ir/finance/airfreight_nxhd/`·`/marine_nxhd/`, 장기 재무 Excel `/ja/ir/finance/xls/financial-data.xls`. 経営計画 `/ja/ir/management/plan/`, 자본정책 `/ja/ir/management/improvement/`. 統合報告書·有報·ファクトブック 4개 페이지는 JS 렌더링이라 fetch-DOM 파싱 실패 → 브라우저로 직접 열 것) |
 | 日本トムソン (IKO) | 6480 | ikont.co.jp | `/ir/finance/fn04.html`(현행)·`fn04_kako.html`(과거短信)·`fn04_kako3.html`(과거설명자료). PDF는 `/ir/finance/pdf/` 아래, 컨테이너 curl 200(봇차단 없음). 파일명: `20YYNqkessan_r`=短信, `20YY03Nq_rb`=補足資料, `_rb2`=決算説明会(반기), `YYYYMMDD`=適時開示, `integrated_report{YYYY}_p`=統合報告書 |
 | 関東電化工業 | 4047 | kantodenka.co.jp | `/ir/library/statement/` (Wizlabo/xj-storage JS 위젯 — 정적 HTML엔 링크 없음, §3-1c. `read_page(filter=links)`로 href 추출, 연도 `<select>`는 `form_input(ref, value="2026")`로 전환. PDF는 `contents.xj-storage.jp/xcontents/AS01440/{hash}/{docid}.pdf` 컨테이너 curl 200) |
+| ソリトンシステムズ | 3040 | soliton.co.jp | `/ir/library/` (irpocket 위젯, §3-1d). 決算説明会 미개최 — 동영상+logmi 書き起こし(`irmovie.html`) |
+| 日本たばこ産業 (JT) | 2914 | jt.com (영문) / jti.co.jp (일문) | `/investors/results/forecast/` (영문 단신·Earnings Report·CFO Presentation, 경로 `forecast/pdf/{YYYY}/{First\|Second\|Third}_Quarter\|Full_Year/{YYYYMMDD}_0N.pdf`). 클라우드 curl 403(봇차단) → Chrome JSZip. IR 이벤트 자료 PDF는 presentation_events가 아니라 `/media/news/{YYYY}/pdf/` 아래 실호스팅(상대경로로 조립하면 404). 유가증권보고서(E)는 jti.co.jp `/investors/others/12g3_2/pdf/` — jt.com 페이지에서 fetch하면 CORS 실패하므로 jti.co.jp로 navigate 후 별도 zip(단 jti.co.jp는 JSZip blob 저장이 막힘 — §5 2번 주의). 최근 Q&A 문서 없음(irwebcasting.com 음성만), 월차·xlsx 없음 |
+| Shin Nippon Biomedical Laboratories | 2395 | snbl.com | eir-parts 목록 JSON(`parts_id=2`, §3-1e). 説明会スクリプト PDF가 매 분기 `ir_material_for_fiscal_ym/{id}/00.pdf`로 제공(5~7MB → 커넥터 업로드 한도 초과 주의, 공통 규칙 §9) |

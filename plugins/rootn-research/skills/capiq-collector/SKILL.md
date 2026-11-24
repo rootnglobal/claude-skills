@@ -1,6 +1,6 @@
 ---
 name: capiq-collector
-version: 261106
+version: 261124
 description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수집하는 스킬: 어닝콜 transcript 최근 2년→IR/transcripts/, 셀사이드 리포트→리서치/, 컨센서스 상세 Excel→리서치/consensus/, Key Developments·comps(요청 시). CapIQ 로그인 필요. 트리거: CapIQ, Capital IQ, 캡아이큐, transcript 받아줘, CapIQ 컨센서스/셀사이드. 파이프라인·jp-research-collector에서도 호출."
 ---
 
@@ -91,6 +91,7 @@ description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수�
 - 표준 구조 `Investment Research/[영문명 (코드)]/{IR/transcripts/, 리서치/, 리서치/consensus/}`.
 - 공통 규칙의 3점 검증(새 파일명, id·수정시각·용량 확인, 내용·언어 재확인) 적용.
 - 기존 자료와 중복이면 재업로드하지 않고 스킵 목록에 기록.
+- 커넥터 `create_file`은 파일 참조(`sha256:...`) 방식으로 약 3MB까지(공통 규칙 §9). 그보다 큰 파일(예: 11MB PDF는 '참조 불가'로 거부)은 방법 D(`drive_uploader.py`) 또는 Drive 동기화 폴더 경유(`references/capiq-paths.md` §5).
 
 ## 3. fail-fast 규칙 (엄격 적용)
 

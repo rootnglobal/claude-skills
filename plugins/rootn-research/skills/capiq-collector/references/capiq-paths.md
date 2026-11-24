@@ -19,6 +19,8 @@
 - **다운로드 성공 검증도 스크린샷 불필요**: `device_bash`로 `ls mnt/다운로드/ | grep -i <종목>` (또는 `ls -lat | head`).
   device_list_dir 전량 덤프보다 device_bash grep이 토큰 효율 높음.
 - 다운로드는 한 건씩(클릭 → 5초 대기 → 폴더 grep 확인 → 다음). 배치 금지.
+- `device_bash`가 'Workspace unavailable'이면 CIQ 자동 파일명(§2)을 추정해 `device_stage_files`로 존재만 확인한다(`device_list_dir` 전체 덤프는 수백 건이라 비효율). Detailed Estimates export 파일명은 추정에 실패했다 → 패턴 확인 필요(2026-11-20).
+- 2026-11-20(JT 2914): 스크린샷은 정상 동작했으나 capitaliq 도메인 `javascript_tool`이 'Permission denied' → JS 스크랩 경로(Estimate Highlights·Ownership 등) 불가. 스크린샷 판독으로 대체하고 신뢰도 '반'으로 표기.
 
 ## 1. 검색 → tearsheet / MI KEY
 - **상단 Search는 자동화 입력 불가**(§9 참조). MI KEY는 `references/capiq-mikey-registry.md` 캐시로 해석 —
@@ -35,6 +37,10 @@
   - `read_page filter=interactive`는 행 요약만(SCRIPTS Asia JPN+ENG-TRANSL 정도) → **해당 gridcell ref를
     `read_page ref_id=<cell> filter=all`로 읽으면 6버전 라벨이 모두 보임.** 원하는 라벨의 WORD ref 클릭.
   - 어닝콜 표준: **SCRIPTS Asia: ENG-TRANSL WORD**(기존 업로드분과 일관). 스페셜콜은 ENG 단일본 WORD.
+- 2026-11-20 실측(JT 2914): 화면에 보이는 버전은 S&P Global: ENG / SCRIPTS Asia: JPN / SCRIPTS Asia: ENG 3개. `read_page`에 보이는 ENG-TRANSL 링크는 숨김 요소라 클릭해도 다운로드되지 않는다 → **영어로 진행하는 콜(대형주)은 'S&P Global: ENG WORD'를 표준**으로 한다(ENG-TRANSL은 보일 때만).
+- 'Include Future Events'가 기본으로 켜져 있어 미래 이벤트 행이 상단에 온다(무시).
+- 첫 클릭이 무시되는 경우가 있다(11/19 콜 1회차 미생성, 2회차 성공) → 폴더 확인 후 1회만 재클릭.
+- 스페셜 콜 파일명 예: `<Company>_Shareholder or Analyst Call_<YYYY-MM-DD>_English.docx`.
 - 다운로드 파일명(CIQ 자동): `<Company>_<EventType>_<YYYY-MM-DD>_<Language>.docx`
   (ENG-TRANSL·ENG → `_English.docx`, JPN → `_Japanese.docx`).
   ※ 같은 표시일 이벤트라도 소스 기준일로 파일명이 갈릴 수 있음
