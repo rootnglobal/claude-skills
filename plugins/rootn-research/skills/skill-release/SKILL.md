@@ -1,6 +1,6 @@
 ---
 name: skill-release
-version: 261125
+version: 261125b
 description: "RootN 커스텀 스킬의 SSOT(Git repo) 관리·검증·배포 스킬. 스킬을 수정/추가한 뒤 '스킬 릴리즈', '스킬 배포', '스킬 검증', '스킬 싱크', 'SSOT 체크', '스킬 버전 올려줘', '스킬 diff' 등의 키워드가 나오면 이 스킬을 사용할 것. 스킬 수정 작업을 마쳤을 때 이 스킬을 후속으로 제안한다. push 가능 여부는 세션마다 다르므로 추정하지 말고 '테스트 브랜치 빈 커밋 push' 1회로 먼저 판별한다."
 ---
 
@@ -152,8 +152,9 @@ git -C /tmp/pubchk log -1 --format='%ci %s'                          # "publish 
 `version` 값이 올라가야 앱이 업데이트를 감지하므로(260804 확인), Action의 version 주입이 빠지면 버튼이 비활성화된다.
 반영 전 세션은 **구버전 스킬로 동작**한다 — 0단계의 캐시 drift가 여기서 생긴다.
 
-claude.ai 계정 마켓플레이스는 공개 repo main 직접 push로는 자동 동기화되지 않는다(도움말상 자동 동기화는 버전을 올린 PR이 기본 브랜치에 병합될 때만). 그래서 push 후 출력에 다음 1줄을 붙인다:
-`claude.ai 반영: 플러그인 → 마켓플레이스 관리 → 해당 마켓플레이스 ⋯ → 동기화 (동기화 커밋 = git ls-remote https://github.com/rootnglobal/claude-skills refs/heads/main 인지 확인)`
+claude.ai 계정 마켓플레이스는 버전을 올린 PR이 기본 브랜치에 병합될 때 자동 동기화된다. Action이 공개 repo에 `publish/*` PR을 만들어 squash 병합하므로(261125 재적용) 보통 손댈 것이 없다. push 후 출력에 다음 1줄을 붙인다:
+`claude.ai 반영: 자동 동기화 확인(PR 병합 배포). 30분 안에 반영 안 되면 수동 — 플러그인 → 마켓플레이스 관리 → 해당 마켓플레이스 ⋯ → 동기화 (동기화 커밋 = git ls-remote https://github.com/rootnglobal/claude-skills refs/heads/main 인지 확인)`
+Action 로그가 `PR 생성/병합 실패 -> 기존 방식` 경고로 끝났으면 직접 push로 배포된 것이라 자동 동기화가 돌지 않는다 → 바로 수동 동기화.
 '추가 → 마켓플레이스 추가' 창의 동기화 버튼은 신규 추가용이라 '이미 추가되었습니다' 오류가 난다.
 
 ### 5. (legacy) manifest 갱신 — zip 수동 업로드 방식을 쓸 때만
