@@ -1,6 +1,6 @@
 ---
 name: api-key-registry
-version: 261023
+version: 261125
 description: "RootN API 키·인증키 레지스트리(구글시트 'RootN API Keys') 조회·등록 스킬. API 키·서비스키·토큰이 필요하면 사용자에게 묻기 전에 먼저 조회하고, 401/Unauthorized/키 미설정 오류 때도 사용. 새 키를 받으면 등록을 제안. 트리거: API 키 어디 있어, 인증키 등록, 키 저장, 서비스키 필요, 키 관리, 토큰 찾아줘."
 ---
 
@@ -13,6 +13,8 @@ RootN의 모든 API 키·토큰의 단일 참조점(SSOT)은 구글시트 **'Roo
 - 찾는 법: Drive `search_files`로 `title = 'RootN API Keys'`(스프레드시트) 검색 → 파일 id 확보. 문서에 id를 적지 않는다.
 - 컬럼: `service, key_name, key_value, account, issued, limits, used_by, notes`
 - 원칙: 키가 필요한 모든 작업은 **레지스트리 조회 → 없으면 발급/요청 → 발급 즉시 등록** 순서.
+- 기본 응답은 **'어디에 있는지' 안내**다: 서비스·키 이름·보관 위치(GitHub Secrets 이름 / 환경변수 이름 / 개별 키 파일명 / 시트 행)·갱신일. 값은 지금 이 세션에서 로컬 호출에 실제로 넣어야 할 때만 읽고, 대화·산출물에 쓰지 않는다.
+- 자동화(GitHub Actions)용 키의 기준 저장소는 GitHub Secrets다. 이전이 끝난 키는 시트에 메타데이터(서비스·키 이름·용도·보관 위치·갱신일)만 남긴다 — 시트 값 칸 삭제는 사용자 확인 후.
 
 ## 1. 키 조회 (읽기)
 

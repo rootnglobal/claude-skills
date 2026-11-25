@@ -1,6 +1,6 @@
 ---
 name: ir-meeting-request-jp
-version: 261124
+version: 261125
 description: "일본 상장사 IR 미팅 요청 메일(일본어+영어)을 작성해 Gmail 임시보관함에 저장하는 스킬. 회사명·4자리 코드로 IR 이메일을 찾고, 웹폼 전용이면 ir-webform으로 진행. 트리거: 일본 IR 미팅 요청, 일본 회사 미팅, JP IR meeting, 일본 기업탐방, 7203T 같은 코드와 미팅 요청. 여러 회사면 회사별 반복."
 ---
 
@@ -36,7 +36,7 @@ IR 이메일을 찾기 전에 같은 회사로 보낸 요청이 있는지 Gmail�
 
 0. **Gmail 발송 이력**(Step 0): 반송 없이 나간 과거 수신 주소.
 1. **웹 검색**: `"{회사명 영문} IR contact email"`, `"{회사명 일본어} IR お問い合わせ メール"`, `"{社名} IR Email"`, `"{社名}" "ir@"`, `"{Company} \"For Investors\" email"`
-2. **회사 공식 홈페이지**: IR 페이지를 WebFetch로 확인. 일본 기업의 IR 페이지는 보통 다음 경로에 있다:
+2. **회사 공식 홈페이지**: IR 페이지를 WebFetch로 확인. WebFetch가 실패하면(client_error·403 등) 1회만 시도하고 Claude in Chrome으로 같은 URL을 연다(사례: Seria 2782 회사 사이트). 일본 기업의 IR 페이지는 보통 다음 경로에 있다:
    - `/ir/`, `/investor/`, `/en/ir/` (영문 IR 페이지)
    - `/ir/contact/`, `/ir/inquiry/` (IR 문의 페이지)
 3. **JPX(일본거래소그룹)**: `www.jpx.co.jp` 에서 해당 종목의 기업정보 확인

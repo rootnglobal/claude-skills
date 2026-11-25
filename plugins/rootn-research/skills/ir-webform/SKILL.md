@@ -1,6 +1,6 @@
 ---
 name: ir-webform
-version: 261124
+version: 261125
 description: "한·일·중·미 상장사 IR 문의 웹폼을 찾아 Claude in Chrome으로 IR 미팅 요청을 작성·제출하는 스킬(확인 화면 대조 후 기본 제출). 공개 IR 이메일이 없고 웹폼만 있으면 되묻지 말고 바로 실행. 트리거: 웹폼, 폼 작성, 문의 양식, 컨택 폼, contact form, IR 문의, 투자자 문의."
 ---
 
@@ -79,13 +79,15 @@ IR 캘린더(IR 일정·決算発表予定日·earnings date)에서 **다음 결
 
 `mcp__Claude_in_Chrome__form_input` 또는 `find` + `computer(left_click)` + `computer(type)` 조합으로 각 필드를 채운다. (cross-origin 임베드 폼은 Step 2의 top-level 우회 후 `javascript_tool`로 채운다.)
 
+**React/Next.js 폼은 `form_input` 우선**: native value setter + input/change/blur dispatch를 `javascript_tool`로 실행하면 렌더러가 멈출 수 있다(CDP Runtime.evaluate 45초 타임아웃 실측). JS setter는 plain HTML 폼이나 cross-origin 우회 때만 쓴다. JS 호출이 1회 타임아웃되면 재시도하지 말고 새 탭에서 폼을 다시 열어 `form_input`으로 채운다(새 탭에서는 긴 textarea도 바로 들어갔다).
+
 필드 매핑:
 
 | 한국어 | 영어 | 일본어 | 중국어 | 입력값 |
 |--------|------|--------|--------|-------|
 | 이름/성명 | Name | お名前/氏名 | 姓名 | sender.txt `name_kr` (한국폼) / `name_en` (기타). 姓/名 분리 폼이면 `name_en`을 성(family)/명(given)으로 나눠 입력 |
 | 이메일 | Email | メールアドレス | 电子邮件 | sender.txt `email` |
-| 연락처/전화 | Phone/Tel | 電話番号 | 电话 | sender.txt `phone`. 해외 회사 폼은 국가코드 포함(+82 형식, 앞자리 0 제거) |
+| 연락처/전화 | Phone/Tel | 電話番号 | 电话 | sender.txt `phone`. 해외 회사 폼은 국가코드 포함(+82 형식, 앞자리 0 제거). 단일 전화 필드가 '+'를 거부하거나(형식 오류·maxLength 13 등) 예시가 국내형(00-0000-0000)이면 국내형 하이픈(010-XXXX-XXXX)을 넣고 +82는 본문 서명에 쓴다(일본 3분할 필드도 같은 원칙, '일본 폼 특이사항') |
 | 회사명 | Company | 会社名 | 公司名称 | sender.txt `company` |
 | 부서 | Department | 部署名 | 部门 | `Research` (선택 필드면 채우고, 없으면 생략) |
 | 문의 유형 | Inquiry Type | お問い合わせ種別 | 询问类型 | IR/기관투자자 관련 옵션 선택 |
@@ -96,7 +98,7 @@ IR 캘린더(IR 일정·決算発表予定日·earnings date)에서 **다음 결
 
 `{회사명}` 부분만 실제 회사명으로 교체하여 아래 국가별 템플릿을 그대로 사용한다. 이름·서명은 sender.txt `name_kr`(한국 템플릿)·`name_en`(그 외)으로 채운다.
 
-**언어 규칙**: 본문은 **대상 회사 언어 + 영어** 병기(일본 = 일본어 + 영어, 중국 = 중국어 + 영어). 한국은 국문 단독, 미국은 영어 단독. 폼에 글자수/바이트 제한이 있으면 영어 파트를 삭제한다(아래 '국가별 콘텐츠 템플릿' 상단 전역 규칙).
+**언어 규칙**: 본문은 **대상 회사 언어 + 영어** 병기(일본 = 일본어 + 영어, 중국 = 중국어 + 영어). 한국은 국문 단독, 미국은 영어 단독. 폼에 글자수/바이트 제한이 있으면 영어 파트를 삭제한다(아래 '국가별 콘텐츠 템플릿' 상단 전역 규칙). 단 폼이 작성 언어를 명시하면(예: "Please fill out the following form in English") 그 지시가 위 규칙보다 우선한다.
 
 **형식·일정 제약 반영(중요)**: 사용자가 미팅 형식(온라인/대면)이나 일정(특정 월·요일·시간대)을 **명시**했으면, 템플릿의 '형식·일정 유연' 문장만 그 제약으로 **정밀 교체**하고 나머지 문구는 유지한다. 예: 온라인 전용 + 10월 오후 13:30~16:30 → 해당 문장을 "온라인(화상)만 희망 / 10월 평일 오후 13:30~16:30 후보 요청"으로 바꾼다. **일본↔한국은 동일 시간대(UTC+9)라 KST/JST 변환 불필요**(그 사실을 본문에 '일본시간, 한국시간과 동일'로 명기하면 오해가 없다). 미국·중국 등 시차가 있는 국가는 상대국 현지시간으로 환산해 병기한다.
 
@@ -108,6 +110,7 @@ IR 캘린더(IR 일정·決算発表予定日·earnings date)에서 **다음 결
 
 **전역 규칙 — 글자수/바이트 제한 폼**
 - 폼에 글자수/바이트 제한이 있어 병기 전문이 안 들어가면, 영문 병기를 생략하고 **대상국 언어(현지어) 단독**으로 작성한다.
+- 폼이 작성 언어를 명시하면 그 지시를 우선한다. 영어 전용인데 글자수 제한까지 있으면 아래 **영어 압축본**(500자 이내, 줄바꿈은 CRLF 2자로 계산)을 쓴다. 입력 전 줄바꿈을 2자로 세어 길이를 확인한다.
 - 주의: 일부 일본 폼 벤더(req.qubo.jp 등)는 "N文字 이하" 표기지만 실제로는 UTF-8 바이트에 가깝게 카운트한다 → 일본어는 3바이트/자라 빨리 초과한다. 현지어 단독 + 핵심만으로 **~950바이트 이내**를 타깃으로 한다(아래 일본 압축본). 입력 전 `len(text.encode('utf-8'))`로 확인.
 
 **선택 문장 (해당 시에만 본문 맺음말 앞에 삽입, 병기 본문이면 언어별로 각각)**
@@ -178,6 +181,21 @@ RootNGlobal Investors（上場株式ロングオンリー運用、グローバ�
 会社紹介: http://www.rootnglobal.com/eng/sub1_1.jsp
 ```
 
+**영어 압축본 (영어 전용 + 글자수 제한 폼, 500자 이내 — CRLF 포함 기준)**
+```
+Dear IR Team at {Company Name},
+
+I am {sender.txt name_en} of RootNGlobal Investors, a long-only equity manager with a 10+ year global track record and 2-3+ year holding periods (http://www.rootnglobal.com/eng/sub1_1.jsp).
+
+As we launch a Japan equity fund, could we request a 60-minute online IR meeting? Written answers to our questions would also be fine.
+
+When replying, please also copy {sender.txt cc}.
+
+Best regards,
+{sender.txt name_en}
+```
+`{sender.txt cc}`·이름을 채운 뒤 길이를 다시 잰다. 넘치면 'Written answers…' 문장부터 줄인다(회사 소개 URL은 유지).
+
 ### 미국 (English)
 
 **제목:** `IR Meeting Request – RootNGlobal Investors`
@@ -232,7 +250,10 @@ Best regards,
 
 ## Step 5: 제출 및 사용자에게 보고
 
-1. **제출**: 확인 화면(確認)이 있으면 표시된 내용을 입력값과 대조한 뒤 送信한다. 확인 화면이 없으면 Step 3의 전 필드 재검증 후 제출한다. 완료 페이지 URL·문구(예: 「お問い合わせを承りました」)로 성공을 검증한다.
+1. **제출**: 확인 화면(確認)이 있으면 표시된 내용을 입력값과 대조한 뒤 送信한다.
+   - **자동번역 주의**: `document.documentElement.className`에 `translated-ltr`/`translated-rtl`이 있으면 Chrome 자동번역 상태다. 이때 `get_page_text` 결과(번역문 — 영어 파트까지 오역될 수 있음)로 대조하지 말고 원본 값으로 대조한다: `input/textarea.value`, 확인 화면이 텍스트만 보여주는 React 폼은 해당 요소의 `__reactProps*` `.children`.
+   - 확인 화면이 없으면 Step 3의 전 필드 재검증 후 제출한다. 완료 페이지 URL·문구(예: 「お問い合わせを承りました」)로 성공을 검증한다.
+   - **제출 후 무응답**: 送信/Submit 클릭 뒤 스크린샷·`get_page_text`가 계속 타임아웃되면 다시 클릭하지 않는다(중복 제출 위험). 2번 자동응답을 확인하고, 없으면 '전송 여부 미확인'으로 보고하고 탭을 열어 둬 사용자가 확인하게 한다.
 2. **자동응답 확인**: 제출 후 Gmail에서 대상 회사 도메인의 자동응답(受付完了 등)을 검색한다. 자동응답에 IR 이메일 주소가 노출되면 follow-up용으로 보고한다.
 3. 사용자에게 다음을 보고한다:
 
@@ -269,3 +290,11 @@ Best regards,
 - **필수 都道府県/住所 (해외 발신 대응)**: 일본 국내 폼의 `都道府県`(현) 드롭다운은 해외 옵션이 없이 필수(※)인 경우가 많다. 승인 대기로 멈추지 말고 **대상사 본사 소재 현을 기본 선택**하고 `住所`에는 실제 해외 주소(sender.txt `address_en`, 예: "..., Seoul, Republic of Korea")를 명기한 뒤 기본 제출 흐름대로 진행하고, 결과 보고에 "都道府県은 대상사 소재 현으로 대체 선택"을 사후 보고한다. `郵便番号` 필수면 sender.txt `postal_code`. TEL 3분할은 국내 형식(예: 010 / XXXX / XXXX)으로 넣고 국가코드(+82)는 본문 서명에 병기한다.
 - **확인 단계 토큰 오류**: 확인(確認) 버튼 클릭 시 이메일 필드 옆에 "通信認証に失敗しました"(통신 인증 실패)가 뜰 수 있다(토큰/세션 이슈로 추정). 입력값은 대개 유지되므로, 재렌더된 폼에서 확인을 **1회** 재시도한다(fail-fast: 2회 초과 금지). 반복 실패면 봇 차단 가능성으로 보고 사용자에게 수동 제출을 넘긴다.
 - **제출 흐름**: 일반적으로 `contact.php`(입력) → `confirm.php`(확인, 送信/修正) → `commit.php`(접수 완료, "お問い合わせを承りました"). 기본 제출 — 확인 화면 내용을 입력값과 대조한 뒤 送信하고, 완료 페이지 URL·문구로 성공을 검증한다.
+
+## 참조: 검증 사례 (2026-11, 공통 규칙 §7 예외 — 실존 URL)
+
+| 회사(코드) | 폼 URL | 특징 |
+|---|---|---|
+| Trial Holdings (141A) | https://trial-holdings.inc/contact/ir/ | Next.js. 확인 `/contact/ir/confirm/` → 완료 `/contact/complete/`. JS setter 금지(렌더러 멈춤) → `form_input`. tel maxLength 13·예시 00-0000-0000 → 국내형 하이픈. 자동응답 메일 있음 |
+| Seria (2782) | https://seria-otoiawase-form.spiral-site.com/corp_ir | SPIRAL 폼, 入力→確認→完了, 필드 f01~f07 + 동의 체크. 회사 사이트는 WebFetch client_error → Chrome으로 진입. 자동응답 메일 있음 |
+| Japan Tobacco (2914) | https://www.jt.com/inquiries/media_investors/input.html | 영어 전용·본문 500자 → 영어 압축본. invisible reCAPTCHA, input → check.html → complete. 2026-11-24 Submit 후 check.html에서 페이지가 멈춰 완료 미확인(재제출하지 않음) |

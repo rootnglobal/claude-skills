@@ -8,13 +8,16 @@ Roles (user decision 2026-11-24): (1) fallback when Claude/Codex limits are exha
   (env GROK_USAGE_LOG, default ~/.rootn/grok_usage.jsonl)
 - monthly cap: refuses when this month's logged cost >= env GROK_MONTHLY_CAP_USD (default 100)
 - x_search: requires --task and refuses if the log already has an x_search call for that task
-stdout: one-line JSON summary. exit 0 ok / 1 error / 2 timeout / 4 monthly cap / 5 x_search cap
+- secret check: refuses to send when the prompt or attachments look like they contain credentials
+  (key prefixes, bot tokens, private keys, password=... style assignments); reports pattern name and line only
+stdout: one-line JSON summary. exit 0 ok / 1 error / 2 timeout / 4 monthly cap / 5 x_search cap / 6 secret detected
 Python 3.10, stdlib only.
 """
 import argparse
 import datetime
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -29,6 +32,37 @@ GUARD = ("[delegate rules] Use only the material in this prompt (attached files 
          "Do not guess names or numbers; if something is not in the material, write 'not in material'.\n\n")
 GUARD_X = ("[delegate rules] Use x_search results and the material in this prompt only. Cite post URLs and dates "
            "for every claim; separate company statements, expert views and rumors. Do not guess.\n\n")
+
+# Credential patterns (user decision 2026-11-25: credentials and customer personal data are never sent).
+# Some literals are split so this file itself does not trip repo secret scanners.
+SECRET_PATTERNS = [
+    ("openai_or_anthropic_key", r"\bsk-(?:ant-)?[A-Za-z0-9_-]{20,}"),
+    ("xai_key", r"\bxai-[A-Za-z0-9]{20,}"),
+    ("github_token", r"\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_" + r"pat_[A-Za-z0-9_]{30,}"),
+    ("aws_access_key", r"\bAKIA[0-9A-Z]{16}\b"),
+    ("google_api_key", r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    ("slack_token", r"\bxox[abprs]-[A-Za-z0-9-]{10,}"),
+    ("telegram_bot_token", r"\b\d{8,10}:A" + r"A[A-Za-z0-9_-]{33}\b"),
+    ("private_key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ("jwt", r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
+    ("bearer_header", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{20,}"),
+    ("credential_assignment",
+     r"(?i)\b(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)\b"
+     r"\s*[:=]\s*['\"]?[^\s'\",;]{6,}"),
+    ("credential_assignment_ko", r"(?:비밀번호|패스워드|암호)\s*[:=：]\s*\S{4,}"),
+]
+_SECRET_RE = [(n, re.compile(p)) for n, p in SECRET_PATTERNS]
+
+
+def find_secrets(parts):
+    """parts: [(label, text)] -> [(label, line_no, pattern_name)]; never returns the matched value."""
+    hits = []
+    for label, text in parts:
+        for i, line in enumerate(text.splitlines(), 1):
+            for name, rx in _SECRET_RE:
+                if rx.search(line):
+                    hits.append((label, i, name))
+    return hits
 
 
 def summary(**kw):
@@ -91,10 +125,18 @@ def main():
         summary(agent="grok", status="error", reason="empty prompt")
         return 1
 
+    parts = [("prompt", prompt)]
     for p in a.attach:
         with open(p, encoding="utf-8", errors="replace") as f:
-            prompt += "\n\n===== BEGIN FILE %s =====\n%s\n===== END FILE %s =====" % (
-                os.path.basename(p), f.read(), os.path.basename(p))
+            body_text = f.read()
+        parts.append((os.path.basename(p), body_text))
+        prompt += "\n\n===== BEGIN FILE %s =====\n%s\n===== END FILE %s =====" % (
+            os.path.basename(p), body_text, os.path.basename(p))
+    hits = find_secrets(parts)
+    if hits:
+        summary(agent="grok", status="secret_detected", reason="credential-like text found; remove or mask it",
+                hits=[{"source": s, "line": n, "pattern": k} for s, n, k in hits[:20]], total=len(hits))
+        return 6
     if not a.no_guard:
         prompt = (GUARD_X if a.x_search else GUARD) + prompt
 
