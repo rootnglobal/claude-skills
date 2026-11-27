@@ -1,6 +1,6 @@
 ---
 name: financial-model-builder
-version: 261106
+version: 261127
 description: "Bloomberg Excel 템플릿 위에 종목 financial model을 만드는 스킬: IR·셀사이드·뉴스·웹 리서치를 통합해 지역·제품·고객 segment별 매출/이익, 수출입·수주잔고 등 선행지표, 성장 원천(매출·mix·마진)과 가속·지속성을 숫자로 분해. 한·미·일·중 지원. 트리거: 재무모델, financial model, 실적 모델, segment 분해, growth 분해, 어닝 모델, 수주잔고 모델."
 ---
 
@@ -78,6 +78,7 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
 - **AI리서치 폴더**: 작업 시작 시 `AI리서치/` 폴더에 **빈 구글 Doc**(`YYYYMMDD_[종목명]_AI리서치`)을 만들어 사용자에게 링크를 주고, 거기에 Gemini/GPT 내용을 형식 제약 없이 복붙하게 한다(.txt 만들 필요 없음). 그 Doc을 읽어 가설 후보로만 반영. 1차 소스 인용 확인 시에만 숫자 채택. 상세는 `references/data-room.md`.
 - **웹서치**: 수출입 통계, 산업 데이터, 최근 뉴스, 경쟁사 동향을 보완한다. 항상 1차 출처로 역추적한다.
   - *일본 종목 선행지표 소스(검증됨 2026-10)*: 재무성 무역통계는 e-Stat `stat-search/file-download?statInfId=…&fileKind=1`(앱ID 불요, 브라우저 UA 필수; 파일 목록은 `/retrieve/api_file?…` + `X-Requested-With: XMLHttpRequest`) — 全国分(국가별)·税関別(세관별, 지역 17개 파일) 9단위 HS. 品別国別表 CSV는 全国分 행(`custom_code='ALL'`)과 税関別 행이 한 파일에 공존해 단순 합산하면 2배 계상 → 총계는 ALL 행만, 관서 분석은 관서 행만 쓴다. 세관=신고지라 생산자 귀속은 추정(공장 소재 세관 매칭)이며 동종 공장이 같은 지역에 있으면 귀속 불가로 표기. METI 生産動態는 meti.go.jp 403 → e-Stat 사본. 日本電線工業会 등 업계 통계는 공개 범위 축소 여부 확인. 美 수입은 Census API 키 필요 → 없으면 UN Comtrade preview(◐). 일본 정부·규제기관 공시(예: 레베뉴캡 投資量, OCCTO 供給計画)는 연 1~2회라 분기 예측보다 연 단위 수요 레벨 체크포인트로 쓴다.
+- **원문 파싱·인계 수치**: 결산단신·월차 PDF를 파싱하거나 다른 모델·세션의 인계 수치를 받으면 `references/sheet-model-ledger.md` §3–4(파싱 앵커, 원문 행·열 이름 대조)를 읽는다.
 - **원자재 pass-through 기업의 일회성 재고·시차이익**: 회사 공시점(분기별 一時的利益 등)으로 ① 시차 스프레드 모델(판매가=분기평균, 원가=재고일수 시차)과 ② 월말 가격 변화(보유손익) 모델을 각각 보정해 범위로 제시하고 Base는 평균으로 둔다. 공시점이 3개 미만이면 금액 정밀도 낮음을 명시하고, 회사 가이던스가 가정한 원자재 경로(예: 추가 상승 없음)와 비교해 upside/downside로 표기한다.
 
 ### 3. 입력 정리 → inputs.json
@@ -103,6 +104,8 @@ Drive 폴더/파일 접근은 Google Drive MCP 도구(`search_files`, `get_file_
 
 **정통 sell/buy-side 스타일 3원칙(참고 모델 기준, `references/model-structure.md`):** ① 분기+연간 둘 다(Quarterly 시트의 FY=SUM 분기 라이브 링크) ② bottom-up 셀 링크(Segment 합계→IS Revenue tie-out, Quarterly FY→연간 IS tie-out) ③ 자세한 breakdown(제품·지역·고객·물량/ASP·선행지표·peer). 값 복붙이 아니라 셀 참조·라이브 수식으로 연결한다.
 
+**Google Sheets 운영모델**(월차·결산단신 원장 기반)을 만들거나 확장할 때는 `references/sheet-model-ledger.md`를 읽는다: §1 입력 원장/계산/검산 3층·활성 키, §5–8 점유율·달력 효과·경로 분해·비용 브리지(시나리오 작업 시), §9 Forecast_Log, §10 Sheets MCP 함정·효율(쓰기 전).
+
 bridge와 growth-delta는 **하드코딩이 아니라 Excel 수식**으로 깐다. 감사 가능하고, 사용자가 가정을 바꾸면 즉시 재계산되도록. 분석 정의(수식)는 `references/analytics-framework.md` 참고.
 
 ### 5. 1페이지 메모
@@ -113,6 +116,7 @@ bridge와 growth-delta는 **하드코딩이 아니라 Excel 수식**으로 깐�
 - 모델과 메모를 Drive `Model/` 폴더에 저장한다 (파일명: `[티커]_[종목명]_Model_v[YYMMDD].xlsx`).
   - 업로드 경로·base64 한도(≲30KB)·md5·`testzip` 검증은 공통 규칙 §9를 따른다. 모델 xlsx는 보통 한도를 넘으므로 방법 D 또는 동기화 폴더/수동 업로드(실패 항목 flag). 메모(.md)는 base64 대신 `textContent`로 `Model/`에 올린다.
 - **검증**: segment 합계 = 전사 매출 일치, bridge 합계 = 실제 ΔRevenue 일치, 출처 없는 셀 0개. 불일치는 메모에 명시한다.
+  - Sheets 운영모델은 검산 탭 표준 목록·切捨 허용오차(n−1)·동결 스냅샷 재현을 `references/sheet-model-ledger.md` §2로 돌린다.
 
 ### 운영 노트 (v261014 — 검증 사례: 5801, 2026-10)
 - **BBG 템플릿 부재 시**: 일본 종목은 회사 IR의 FACT BOOK xlsx(분기 세그먼트·연결 P&L, 재작성 vintage 포함)가 1차 대체 소스. CF 계산서는 미수록으로 flag. irpocket JS 인덱스는 미사용 회사(404)가 있으니 1회 시도 후 회사 IR로 전환.
@@ -129,6 +133,7 @@ bridge와 growth-delta는 **하드코딩이 아니라 Excel 수식**으로 깐�
 - `references/analytics-framework.md` — growth delta·bridge 수식 정의
 - `references/data-room.md` — Drive 데이터룸 컨벤션·AI 리서치 입력 규칙
 - `references/model-structure.md` — 정통 sell/buy-side 분기+연간·bottom-up 링크 구조 (참고 모델 패턴)
+- `references/sheet-model-ledger.md` — Google Sheets 운영모델: 입력 원장/계산/검산 3층, 검산 목록, 단신·월차 파싱, 점유율·달력·경로 분해, 비용 브리지, Forecast_Log, Sheets MCP 효율
 - `assets/inputs_schema.json` — 모델 입력 스키마
 - `assets/memo_template.md` — 1페이지 메모 템플릿
 
