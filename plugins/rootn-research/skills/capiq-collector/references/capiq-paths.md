@@ -1,6 +1,6 @@
 # capiq-paths.md — CapIQ 실측 경로·동작·entitlement·커버리지
 
-> 파일럿: 1차 2026-07-22 KST (bbg PC), 2차 2026-07-22 KST (메인 PC desktop-1u1d5ea).
+> 파일럿: 1차 2026-07-22 KST (bbg PC), 2차 2026-07-22 KST (메인 PC).
 > Claude in Chrome(Browser 1)으로 조작. 아래는 2차 세션 갱신 반영본.
 
 ## 0. 환경 / 로그인
@@ -23,11 +23,10 @@
 - capitaliq 도메인 `javascript_tool` 허용 여부는 세션마다 다르다 → 1회 시도 후 판단. 2026-11-20(JT 2914)은 'Permission denied'(스크린샷은 정상) → JS 스크랩 경로(Estimate Highlights·Ownership 등) 불가, 스크린샷 판독으로 대체하고 신뢰도 '반'으로 표기. 2026-11-27(SWCC 5805·Yamaichi 6941)은 정상 동작.
 
 ## 1. 검색 → tearsheet / MI KEY
-- **상단 Search는 자동화 입력 불가**(§9 참조). MI KEY는 `references/capiq-mikey-registry.md` 캐시로 해석 —
+- **상단 Search는 자동화 입력 불가**(§9 참조). MI KEY는 Drive 시트 `capiq_mikey_registry` 캐시로 해석(조회·append 방법은 `references/capiq-mikey-registry.md`) —
   미스면 사용자가 CapIQ URL(`id=`) 1회 제공 → 캐시 append(이후 입력 0).
 - tearsheet /company/profile?id=<MI_KEY>.
-- Kioxia: TSE:285A, MI KEY 14356784, SPCIQ 605626628. Sansan: TSE:4443, MI KEY 5184024, SPCIQ 78816020.
-  (전체 캐시는 registry 파일이 SSOT.)
+  (캐시 SSOT = Drive `_config/capiq_mikey_registry` 시트.)
 - 좌측 페이지 메뉴가 직접 URL 링크로 노출(read_page): transcripts / detailedEstimates(ID 대문자) / profile / investmentresearch.
 
 ## 2. Transcripts(2년) — 동작 재확정
@@ -146,7 +145,7 @@
 - `javascript_tool` 반환은 약 1,500자에서 잘린다. 반환값에 쿼리스트링 포함 URL(`location.href`·링크 href 등)이나 'n=' 같은 문자열이
   들어가면 결과 전체가 `[BLOCKED: Cookie/query string data]`로 막힌다 → 짧은 필드의 JSON 배열로 나눠 반환하고 URL은 반환하지 않는다(2026-11-27 5857·5805).
 
-## 9. 신규 수집 섹션 — route·방법 (3차 실측, Kioxia 14356784 / Sansan 5184024)
+## 9. 신규 수집 섹션 — route·방법 (3차 실측, Kioxia·Sansan)
 - **섹션 맵**(좌측 네비): Profile(Corporate Profile·Stock·Corporate Structure·Officers·Analyst Coverage·
   Compensation·Advisers·Products & Services·Competitors·Valuation/Peer Comps) · Financials · Estimates ·
   Investment & Market Research · News/Events/Filings · Transactions · Business Relationships & Supply Chain ·
@@ -178,7 +177,7 @@
   - 소스 확보 불가: top-search MFE(`cdn.spgi.spglobal.com/spg/search/top-search/...`) JS는 **CORS로 fetch 본문 판독 차단**(전부 ERR).
   - 앱 함수: `topSearch`는 module-federation 로더(검색 아님), `omniSearchRequestor`는 Dojo declare 난독화(호출 메서드 미노출).
   - 티커 라우트: `#company/profile?referenceIdentifier=TSE:1812` **미해석**(빈 프로필).
-  - **결론**: 순수 zero-input 해석기 불가 → **`references/capiq-mikey-registry.md` 캐시**로 대체.
+  - **결론**: 순수 zero-input 해석기 불가 → **Drive 시트 `capiq_mikey_registry` 캐시**(방법: `references/capiq-mikey-registry.md`)로 대체.
     신규 종목만 사용자가 CapIQ URL(`id=` 포함) 1회 제공 → 캐시 append → 이후 입력 0. (수집기 §2-1 프로토콜)
   - 미래 후보(미검증): Screener 그리드 API·Report Builder 엔티티 피커(REST 여지) — 필요 시 조사.
 - **route 추가 확정(4차, Sansan 5184024 좌측 네비 `<a href>` 실측)**: corporateStructure(Id) · analystCoverage(ID) ·
