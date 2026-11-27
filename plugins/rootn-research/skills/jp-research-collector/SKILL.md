@@ -1,6 +1,6 @@
 ---
 name: jp-research-collector
-version: 261124
+version: 261127
 description: "일본 종목 리서치 자료 수집 스킬: Kabutan·Minkabu·株予報Pro 컨센서스, 四季報 독자예상, 공식 IR 결산설명자료 PDF, Shared Research·IR Agents 취재노트·개인투자자 IR Q&A를 모아 종목명_티커_YYMM 폴더로 정리. 트리거: 일본 종목 리서치, 일본주 자료 수집, 日本株リサーチ, 株探, 四季報, Shared Research, 일본 결산설명회, 4자리 코드와 자료 요청."
 ---
 
@@ -53,6 +53,8 @@ description: "일본 종목 리서치 자료 수집 스킬: Kabutan·Minkabu·�
 ### 증분 수집 모드 (기존 종목 폴더가 있을 때)
 
 기존 종목 폴더가 있으면 `collection_summary`·`ir_index`의 마지막 수집일 이후 delta만 수집한다. 기존 파일과 용량을 비교해 ±수십 바이트면 재생성본으로 보고 재업로드를 생략한다. 요약 파일은 `_YYMM` 신규 이름으로 만든다.
+- 이전 요약의 '수집 완료' 항목은 Drive 실재 여부로 재대조한다 — 요약에만 있고 Drive에 없는 파일이 생긴다(6941 실측 2026-11: 9/18 PDF 2건). 없으면 delta에 넣는다.
+- 이전에 '미발행/미커버/없음(확인)'으로 기록한 항목(통합보고서·Shared Research 등)은 증분 실행 때마다 재확인한다(6941은 2026-11-05 첫 통합보고서 발행).
  
 ### 저장 폴더 확인
  
@@ -368,6 +370,7 @@ ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
 - **처리**: 브라우저(Claude in Chrome 또는 built-in 브라우저)로 페이지를 열고 `read_page(filter=links)`로 렌더된 href를 추출한다. PDF 실호스트는 `contents.xj-storage.jp/xcontents/{ASxxxxx}/{hash}/{docid}.pdf` — curl 허용 환경이면 헤더 없이 curl 200(egress 제한 환경이면 §5 Chrome 경로). docid는 TDnet식 `140120YYMMDD...` 또는 script판 `YYYYMMDDhhmmss…s.pdf`.
 - **연도 전환**: 기본 노출은 최근 2개 회계연도(`max_years:2`). 그 이전은 연도 `<select>`(ref)를 `form_input(ref, value="YYYY")`로 전환 후 재-read. `read_page`가 ~28항목에서 truncate되므로 연도별 단독 조회로 회피한다.
 - 판별: IR 라이브러리 페이지 소스에 `WllIrLibrary`·`xj-storage` 문자열이 있으면 이 절차로 바로 간다(앵커 스캔으로 0건 나와도 "자료 없음" 아님).
+- 소스에 `XjStorageLoaderLibrary0N(_EN).js` 로더가 있으면 브라우저보다 먼저 `GetList2.aspx` JSON 전체 목록을 curl로 받는다(URL 패턴·doctype 읽는 법·PDF-SUMMARY 스킵: ir-collertor §2-3).
 
 ### 3-1d. irpocket 위젯 IR 라이브러리
 
@@ -378,12 +381,24 @@ ir_supplemental_data_YYYY-MM_FYxxxxQx.xlsx
   - 영문: `ir-entan-all.js`, `ir-enmeet-all.js`
   - 피드 이름은 `config_r*.js`의 `rule:` 블록에서 확인. link는 `//pdf.irpocket.com/C{code}/...` → `https:`를 붙여 curl 200.
 - 決算補足説明資料는 ir-all-all이 아니라 release 피드에만 있는 경우가 있다(3040 실측) → 두 피드를 모두 확인한다.
+- 같은 문서가 피드에 URL 2개로 중복 게재될 수 있다(5805 2Q 단신·보충자료, md5 동일) → 업로드 전 md5로 중복 제거.
+- 決算説明会·テーマ別説明会 자료·Q&A는 피드가 아니라 회사 HTML 페이지에만 걸리기도 한다(5805: 아래 검증 표) → 피드만 보고 "없음"으로 단정하지 않는다.
 
 ### 3-1e. eir-parts 위젯 IR 라이브러리
 
 - **증상**: WordPress 등 IR 라이브러리 정적 HTML에 PDF 링크 0건, eir-parts JS 위젯이 목록을 렌더한다.
 - **처리**: 전체 목록 JSON(JSONP `eolparts_announcement_N(...)`)을 curl로 받는다: `https://ssl4.eir-parts.net/V4Public/EIR/{code}/ja/announcement/announcement_{parts_id}.js` — `item[]`: format_date·title·link·news_type·doc_cat·file_size.
 - `parts_id`는 회사별로 다르다(2395는 2, 1은 404) → 1~5를 순서대로 시도. 클라우드 egress가 허용된 환경에서 curl 200.
+
+### 3-1f. azcms(ir-service.net) 적시공시 위젯
+
+- **증상**: 적시공시·IR 뉴스 목록을 `azcms.ir-service.net` JSONP가 그린다(정적 HTML엔 링크 없음).
+- **처리**: 페이지 소스의 JSONP 요청 URL을 curl로 받는다. `private` 파라미터 = 카테고리 코드 콤마연결 + `company_id`를 **구분자 없이** 붙인 값(예: `0,5,6,...,60` + `{company_id}` → `...,60{company_id}`). 콤마를 하나 더 넣으면 302 → `error.aspx`.
+- 응답은 키가 따옴표 없는 JS 객체 → `re.sub(r'([{,])\s*([a-zA-Z_]+)\s*:', r'\1"\2":', s)` 후 `json.loads`. 실측: Yamaichi Electronics(6941), 2026-11.
+
+### 3-1g. 회사 웹 NEWS (WordPress RSS) — 적시공시 밖 이벤트
+
+회사 NEWS가 WordPress면 `/news/feed/?paged=N` RSS를 N=1부터 빈 페이지까지 받아 2년치를 일괄 인덱싱한다(제품 출시·전시회·재해/조업 공지 등 TDnet에 안 나오는 이벤트). 제목·날짜·링크만 `news_index.txt`에 남긴다. 실측: 6941, 2026-11.
 
 ### 3-2. CapIQ transcripts — transcript 1차 소스 (Chrome 가용 시)
 
@@ -414,6 +429,10 @@ WebSearch → "{회사명} site:finance.logmi.jp 決算説明会"
 ---
  
 ## Step 4: 리서치 리포트 수집
+
+### 4-0. 셀사이드 갭 점검 기준 — 회사 アナリスト・カバレッジ 페이지
+
+회사 IR에 'アナリスト・カバレッジ'(커버 증권사 목록) 페이지가 있으면 1회 확인해 **커버 증권사 vs 보유 리포트**를 대조하고, 빠진 증권사를 결과 보고에 갭으로 적는다(기준일 표기 포함). 없으면 skip. 예: SWCC(5805) `/jpn/ir/stock/analyst_coverage.html`.
  
 ### 4-1. Shared Research (sharedresearch.jp) — 기관급 분석 리포트
  
@@ -423,7 +442,7 @@ Shared Research는 약 250개 일본 상장사에 대한 독립적인 기업 분
 ```
 WebSearch → "{회사명} site:sharedresearch.jp"
 ```
-결과에 `sharedresearch.jp/ja/companies/{종목코드}` URL이 있으면 커버리지에 포함.
+`sharedresearch.jp/{ja,en}/companies/{종목코드}` 페이지는 **미커버 종목에도 존재**하므로 URL 존재만으로 커버로 판정하지 않는다(2026-10 SWCC 5805 요약에서 오판). 페이지 HTML의 `window.state.reportContent`가 null이고 `company.coverageInitiatedAt`도 null(status `DRAFT`)이면 `커버리지 없음(확인)`, 본문이 있으면 커버.
 
 **로그인 전에 임베드 본문부터**: `https://sharedresearch.jp/ja/companies/{code}` 페이지 HTML(curl 200, 약 3.7MB)에 리포트 본문 HTML이 JSON 문자열로 통째 임베드돼 있다(로그인 불필요). 가장 긴 JSON 문자열을 `json.loads` → BeautifulSoup으로 텍스트화하면 전문을 얻는다(3040: 약 14만 자). PDF 다운로드·로그인은 이 경로가 실패할 때만.
 
@@ -752,7 +771,7 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 - **javascript_tool 출력이 중간에 잘림**: 언어와 무관하게 약 1,000자가 한계(2026-11 실측). 전문은 Blob 다운로드로 사용자 폴더에 떨구고, 툴 출력으로는 헤딩·문항 머리·핵심 수치만 정규식으로 뽑는다.
 - **cdnjs 스크립트 로드 실패**: 해당 사이트 CSP가 외부 스크립트를 막는 경우. IR 사이트는 대체로 허용되므로, 막히면 CSP가 느슨한 다른 자사 페이지(월차 페이지 등)로 이동해 같은 작업을 수행한다.
 - **지주회사 전환 종목의 과거 데이터 단절**: 티커가 바뀌었으면(예: 日本通運 9062 → NIPPON EXPRESS HD 9147, 2022.1 株式移転) 전환 전 공시는 구 법인명으로 EDINET에 있고, 결산기 변경이 겹치면 변칙 결산(예: 2021년 4~12월 9개월)이 섞인다. 회사가 접합해 공표하는 장기 재무 Excel이 있으면 그것을 1차 소스로 쓴다.
-- **순수 클라우드 세션에서 Drive 대용량 PDF 업로드**: 커넥터 `create_file`은 파일 참조(`sha256:<hex>:<절대경로>`) 방식이면 파일 약 3MB까지 올라간다(공통 규칙 §9). 그보다 큰 PDF는 zip으로 묶어 사용자에게 전달 + 요약 '미업로드' 절에 flag(업로더·동기화 폴더가 있으면 §9 방법 D 우선). 사례: 3040 補足説明資料 8건·中計 PDF 3.5~7.6MB 미업로드.
+- **순수 클라우드 세션에서 Drive 대용량 PDF 업로드**: 커넥터 `create_file`은 파일 참조(`sha256:<hex>:<절대경로>`) 방식이면 파일 약 3MB까지 올라간다(공통 규칙 §9). 그보다 큰 PDF는 §9 대용량 PDF 폴백(재압축 → 페이지 분할 → 텍스트+원본 URL+수동 업로드 요청)을 따르고 요약 '미업로드' 절에 flag(업로더·동기화 폴더가 있으면 §9 방법 D 우선). 사례: 3040 補足説明資料 8건·中計 PDF 3.5~7.6MB 미업로드.
 - **built-in 브라우저(`mcp__remote-devices__Claude_Browser`)**: `javascript_tool`의 eval/`console.log`가 값을 반환하지 않음(undefined) → DOM 추출은 `read_page(filter=links/interactive)`를 쓴다. `form_input`은 elements 배열이 아니라 flat `{ref, value}` 스키마. (Claude in Chrome은 `javascript_tool` 반환값 정상)
 - **xj-storage PDF가 curl로 안 받아짐**(드묾): 브라우저에서 링크를 클릭하지 말고 `read_page`로 얻은 href를 그대로 curl. 200바이트 미만이면 hash/docid를 재확인한다(§3-1c).
 
@@ -772,3 +791,4 @@ zip 및 브라우저 직접 다운로드분 (사용자 다운로드 폴더 — �
 | ソリトンシステムズ | 3040 | soliton.co.jp | `/ir/library/` (irpocket 위젯, §3-1d). 決算説明会 미개최 — 동영상+logmi 書き起こし(`irmovie.html`) |
 | 日本たばこ産業 (JT) | 2914 | jt.com (영문) / jti.co.jp (일문) | `/investors/results/forecast/` (영문 단신·Earnings Report·CFO Presentation, 경로 `forecast/pdf/{YYYY}/{First\|Second\|Third}_Quarter\|Full_Year/{YYYYMMDD}_0N.pdf`). 클라우드 curl 403(봇차단) → Chrome JSZip. IR 이벤트 자료 PDF는 presentation_events가 아니라 `/media/news/{YYYY}/pdf/` 아래 실호스팅(상대경로로 조립하면 404). 유가증권보고서(E)는 jti.co.jp `/investors/others/12g3_2/pdf/` — jt.com 페이지에서 fetch하면 CORS 실패하므로 jti.co.jp로 navigate 후 별도 zip(단 jti.co.jp는 JSZip blob 저장이 막힘 — §5 2번 주의). 최근 Q&A 문서 없음(irwebcasting.com 음성만), 월차·xlsx 없음 |
 | Shin Nippon Biomedical Laboratories | 2395 | snbl.com | eir-parts 목록 JSON(`parts_id=2`, §3-1e). 説明会スクリプト PDF가 매 분기 `ir_material_for_fiscal_ym/{id}/00.pdf`로 제공(5~7MB → 커넥터 업로드 한도 초과 주의, 공통 규칙 §9) |
+| SWCC | 5805 | swcc.co.jp | irpocket 위젯(§3-1d, code 5805: `ir-all-all.js`·`release-all-latest-12m.js`). 決算説明会·テーマ別説明会 자료와 Q&A는 피드가 아니라 `/jpn/ir/meeting/output.html`·`particular_theme_briefing.html`에 `/jpn/ir/pdf/IR_presentationYYMMDD.pdf`·`IR_QAYYMMDD.pdf`로 걸림(클라우드 curl 200). 2Q 단신·보충자료는 irpocket에 URL 2개씩 중복(md5 동일) — 업로드 전 md5 중복 제거. `/jpn/ir/stock/analyst_coverage.html`에 커버 증권사 목록(기준일 표기, §4-0) |
