@@ -1,6 +1,6 @@
 ---
 name: ir-collertor
-version: 261106
+version: 261127
 description: "종목명·티커로 최근 2년 IR 자료(실적발표·사업보고서·10-K/10-Q·有報·결산설명회 등)를 공식 IR 페이지와 DART·SEC EDGAR·EDINET/TDnet·CNINFO에서 수집해 Drive 'Investment Research/[종목명]/IR'에 정리하는 스킬. 트리거: IR 자료 수집, 투자자료, 공시 자료, 어닝콜 자료, 실적발표 자료, 종목 IR."
 ---
 
@@ -104,6 +104,14 @@ read_page로 자료 목록 확인
 PDF/PPT/Excel 다운로드 링크 수집
 ```
 
+**HTML에 PDF 링크가 0건이면 페이지 소스의 xj-storage 로더 스크립트를 먼저 확인한다**(JS가 목록을 그리는 일본 IR 라이브러리 — "자료 없음" 아님).
+- 소스에서 `//www.xj-storage.jp/resources/<회사코드>/XjStorageLoaderLibrary0N(_EN).js`를 찾아 그 안의 `doctype` 코드들을 읽는다.
+- 전체 목록(제목·공시일·PDF/XBRL zip URL·용량)을 JSON으로 받는다 — 브라우저 불필요, 컨테이너 curl로 바로 다운로드됨:
+  `https://www.xj-storage.jp/public-list/GetList2.aspx?company=<회사코드>&len=10000&doctype=<코드들 콤마연결>&output=json&callback=cb` (응답은 `cb(...)` JSONP → 괄호 안을 `json.loads`)
+- `PDF-SUMMARY`는 본문 PDF와 내용이 중복되므로 받지 않는다.
+- 검증 사례(2026-11): ARE Holdings(5857) `AS01417` — `01.js`(결산 13,1,2,3,4,16,17,18,19,20,21,98,111), `02.js`(有報·半期 1030~11180), `01_EN.js`(15,20001,20098,20111).
+- 그 밖의 일본 위젯형 라이브러리(Wizlabo·irpocket·eir-parts·azcms)는 jp-research-collector §3-1c~3-1f 절차를 쓴다.
+
 ### 2-4. 라이브러리 전수 체크리스트 (필수)
 
 **핵심 원칙: 절대 "최근 분기 실적자료 몇 개"나 "이미 세션에서 확보한 URL"만으로 끝내지 않는다.** 반드시 공식 IR 라이브러리 인덱스 페이지를 직접 열어 **전체 자산을 열거한 뒤**, 이미 가진 것만 스킵한다. 열거를 건너뛰고 바로 다운로드로 넘어가는 것은 이 스킬의 실패 모드다.
@@ -128,6 +136,13 @@ PDF/PPT/Excel 다운로드 링크 수집
 - **일본 종목은 EN 라이브러리와 JP 라이브러리가 서로 다른 자산을 가질 수 있다. 반드시 둘 다 확인한다.** 한쪽에만 있는 Excel·Transcript가 흔하다.
 
 이 체크리스트 결과(수집 / 미확보 / 없음(확인))를 **Step 5 결과 보고 표에 그대로 반영**한다.
+
+### 2-5. 공시 타임라인 — 일본 EDINET 대량보유 스캔
+
+일본 종목은 기본 수집에 **최근 3~4개월 대량보유 스캔**을 포함한다(EDINET API v2 `documents.json?date=YYYY-MM-DD&type=2`, 일 1콜 → 120콜 내외; 구독키는 공통 규칙 §9, 'RootN API Keys' key_name `EDINET_API_KEY`). 실측(2026-11, Yamaichi Electronics 6941): Effissimo 신규 8% 보유를 이 경로로만 발견.
+- 대량보유보고서·変更報告書의 `secCode`는 **제출자** 기준이라 대상회사 코드로는 안 잡힌다 → `issuerEdinetCode == 대상회사 EDINET 코드`로 필터한다.
+- 보유목적·보유비율 추출: 문서 PDF를 `pdftotext -layout`(서식 고정 양식이라 -layout이 맞다) 후 `【保有目的】`, `上記提出者の株券等保有割合` 다음 줄을 읽는다.
+- 결과(제출일·제출자·보고서 종류·보유비율·보유목적)를 Step 5 보고에 표로 남긴다. 해당 기간에 0건이면 `없음(확인, 스캔 기간 명시)`.
 
 ---
  
@@ -250,6 +265,7 @@ Google Drive의 네이티브 파일 선택 대화상자는 자동화가 제한�
 3. 출력의 size [OK] md5 [OK] 로 3점 검증. FAIL이면 --name-suffix 로 재업로드.
 - 장점: 대용량(수 MB) OK, base64 인라인 한계·네이티브 피커 문제 없음, md5 무손실 검증.
 - 참고: Drive 커넥터 create_file 인라인 base64 한도·검증은 공통 규칙 §9(≲30KB, md5·testzip)를 따른다.
+- 약 3.1MB 초과 PDF를 커넥터로 올려야 하면 공통 규칙 §9 대용량 PDF 폴백(재압축 → 페이지 분할 → 텍스트+원본 URL)을 따른다.
 ```
  
 **방법 A: Chrome 드래그 & 드롭 시뮬레이션** (⚠️ Google Drive에는 부적합)

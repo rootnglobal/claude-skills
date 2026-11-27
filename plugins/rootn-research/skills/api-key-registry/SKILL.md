@@ -1,6 +1,6 @@
 ---
 name: api-key-registry
-version: 261125
+version: 261127
 description: "RootN API 키·인증키 레지스트리(구글시트 'RootN API Keys') 조회·등록 스킬. API 키·서비스키·토큰이 필요하면 사용자에게 묻기 전에 먼저 조회하고, 401/Unauthorized/키 미설정 오류 때도 사용. 새 키를 받으면 등록을 제안. 트리거: API 키 어디 있어, 인증키 등록, 키 저장, 서비스키 필요, 키 관리, 토큰 찾아줘."
 ---
 
@@ -18,9 +18,11 @@ RootN의 모든 API 키·토큰의 단일 참조점(SSOT)은 구글시트 **'Roo
 
 ## 1. 키 조회 (읽기)
 
-1. 위에서 찾은 파일 id를 `mcp__Google_Drive__read_file_content` 로 읽는다 (마크다운 표로 반환됨).
+1. 위에서 찾은 파일 id를 `download_file_content`(`exportMimeType=text/csv`)로 받는다 — 결과가 파일로 저장돼 키 값이 대화에 찍히지 않는다. `read_file_content`는 표 전체(모든 키 값)를 대화에 반환하므로 조회에 쓰지 않는다.
+   - 필요한 행만 python으로 추출해 권한 600 임시파일에 쓰고, 호출에 쓴 뒤 CSV·임시파일을 모두 삭제한다.
    - 같은 제목이 여러 개면 수정시각 최신·소유자 본인 파일을 쓰고, 나머지는 보고만 한다(레지스트리 분열 점검).
 2. `service`/`used_by`/`notes` 컬럼에서 필요한 서비스를 매칭한다. 부분일치 허용 (예: "공공데이터포털" ↔ "data.go.kr").
+   - 이름이 비슷한 서비스는 `key_name`으로 확정한다: 'EDINET DB'(제3자, `EDINETDB_API_KEY`)와 금융청 공식 EDINET API v2(`EDINET_API_KEY`)는 별개 키다.
 3. `key_value`가 `(값은 ... 참조)` 형태면 실제 값은 해당 위치(Drive 파일 등)에서 읽는다.
 4. 레지스트리에 없으면: 사용자에게 키 요청 또는 발급 절차 안내. **발급받으면 즉시 2번 절차로 등록 제안.**
 
@@ -35,9 +37,9 @@ Drive MCP는 구글시트 셀 수정이 불가하다(파일 신규 생성만 가
   - 등록 확인: `{"secret":"...","action":"find","service":"...","key_name":"..."}` → 일치 행 메타(row·account·issued·used_by·has_value). key_value 는 돌려주지 않는다. 오류: `unauthorized`(secret 불일치) · `not configured` · `internal error`.
   - curl 사용 시: 응답이 302로 `script.googleusercontent.com/macros/echo?...`를 가리키는데, `curl -L`이 POST를 그대로 재전송해 405가 날 수 있다. Location 헤더를 직접 받아 그 URL로 **GET** 재요청할 것.
   - 웹앱이 403("You need access")을 내면: 조직 정책이 아니라 스크립트 소유자가 Apps Script 편집기에서 함수를 1회도 실행하지 않아 OAuth 동의(SpreadsheetApp 권한)가 안 된 경우가 흔하다 — `script.google.com/d/{script_id}/edit`에서 함수 1회 수동 실행 후 재시도(재배포 불필요).
-  - 등록 후 read_file_content로 재확인.
+  - 등록 후 §1 방식(CSV 다운로드)으로 재확인.
 - **B. Chrome 자동화 (폴백)**: A가 막히면(웹앱 접근 불가 등) Claude in Chrome이 연결돼 있을 때 시트 URL
-  (1단계에서 찾은 id의 `/spreadsheets/d/{id}/edit`)를 열어 마지막 행 아래에 새 행을 직접 입력한다. 입력 후 read_file_content로 재확인.
+  (1단계에서 찾은 id의 `/spreadsheets/d/{id}/edit`)를 열어 마지막 행 아래에 새 행을 직접 입력한다. 입력 후 §1 방식(CSV 다운로드)으로 재확인.
 - **C. 사용자 입력 요청 (최종 폴백)**: A, B 모두 안 되면 추가할 행을 탭 구분 한 줄로 정리해 사용자에게 전달하고 시트에 붙여넣도록 요청한다.
 
 등록 시 채울 것: service(서비스명), key_name(키 종류), key_value(값 — 단 고민감 키는 값 대신 참조 위치), account(발급 계정), issued(YYYY-MM-DD), limits(한도), used_by(사용하는 스크립트·스킬·트리거), notes(활용신청 범위, 재발급 방법 등).
