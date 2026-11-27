@@ -23,7 +23,8 @@
 
 ## 캐시 위치 — Drive 시트 (2026-11-27 이전)
 - 캐시는 이 파일이 아니라 Drive `Investment Research/_config/` 의 Google 시트 **`capiq_mikey_registry`** 에 둔다(공개 배포본에 종목·키를 남기지 않고, 어느 세션에서나 바로 append하기 위해).
-  - 찾기: Drive `search_files` → `title = 'capiq_mikey_registry' and mimeType = 'application/vnd.google-apps.spreadsheet'`. ID는 문서에 쓰지 않는다.
+  - 찾기: ① Drive `Investment Research/_config/sheet_ids.txt`의 `capiq_mikey_registry` 키 값(시트 ID)을 쓴다(`read_file_content`, 다른 키처럼 `key=value` 한 줄).
+    ② 파일이나 키가 없을 때만 폴백: Drive `search_files` → `title = 'capiq_mikey_registry' and mimeType = 'application/vnd.google-apps.spreadsheet'`. ID는 문서에 쓰지 않는다.
   - 탭 `cache`: `ticker | company | mi_key | spciq_id | acquired | note` (예: `TSE:XXXX | <회사명> | <MI KEY> | <SPCIQ> | YYYY-MM-DD |`).
   - 탭 `pending`: `requested | guessed_ticker | mi_key | status` — 사용자 URL을 기다리는 종목.
 - 조회: Sheets `get_values`(`cache!A:F`)로 읽어 티커·회사명으로 매칭.

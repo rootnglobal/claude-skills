@@ -1,6 +1,6 @@
 ---
 name: capiq-collector
-version: 261127b
+version: 261127c
 description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수집하는 스킬: 어닝콜 transcript 최근 2년→IR/transcripts/, 셀사이드 리포트→리서치/, 컨센서스 상세 Excel→리서치/consensus/, Key Developments·comps(요청 시). CapIQ 로그인 필요. 트리거: CapIQ, Capital IQ, 캡아이큐, transcript 받아줘, CapIQ 컨센서스/셀사이드. 파이프라인·jp-research-collector에서도 호출."
 ---
 
@@ -61,7 +61,7 @@ description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수�
 
 ### 2-1. 종목 식별 (MI KEY 해석 — 최소입력·비차단)
 - **상단 Search 자동화 불가**(값 주입 리셋·백엔드 gRPC·소스 CORS 차단, capiq-paths §9). 자동 룩업 시도 금지.
-- **해석 순서(비차단)**: (1) Drive 시트 `capiq_mikey_registry`의 `cache` 탭 조회(방법은 `references/capiq-mikey-registry.md`) → 있으면 그 MI KEY로 직행(입력 0).
+- **해석 순서(비차단)**: (1) Drive 시트 `capiq_mikey_registry`의 `cache` 탭 조회(시트 ID = `_config/sheet_ids.txt`의 `capiq_mikey_registry` 키, 없으면 제목 검색 — `references/capiq-mikey-registry.md`) → 있으면 그 MI KEY로 직행(입력 0).
   (2) 미스면 **멈추지 않는다**(공통규칙 §2 ask-async): 해석되는 종목부터 **먼저 전부 수집**하고,
   미해석 종목들은 **한 목록으로 모아** "CapIQ에서 열고 URL(`.../profile?id=<MIKEY>`) 또는 MI KEY를 달라"고
   **결과 보고에 함께** 요청한다(순수 식별 모호 시 동명·거래소도 함께). 응답이 없으면 그 종목만 스킵하고
