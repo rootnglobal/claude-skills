@@ -53,13 +53,16 @@
 ## 8. 발신자·CC 표준 (아웃리치 계열)
 - 자사 발신 계정·CC·서명은 Drive `_config/sender.txt`에서 읽는다(개인 주소를 문서에 직접 기재하지 않는다).
 - `_config/sender.txt` 항목: `email`(발신), `cc`(IR 미팅요청·질문지 발송 공통 CC), `name`/`company`(서명), `name_kr`/`name_en`(리서처 국문·영문 이름 — 템플릿에 실명을 쓰지 않고 이 값으로 채운다), `phone`, `postal_code`/`address_en`(주소 필수 폼용 — 해외 폼은 `address_en`), `address_kr`(선택 — 파일에 없을 수 있음, 국내 폼은 회사 주소 불필요).
+- IR 미팅 기본 참석자는 Drive `_config/ir_meeting_attendees.txt`(비공개)에서 읽는다 — 키: `attendee_en`/`attendee_ja`/`title_en`/`title_ja`/`interpreter_count`/`emergency_1`/`emergency_2`(ir-meeting-reply). 값은 문서에 쓰지 않는다.
 - 자사 도메인(답변 판정 시 '우리 쪽'): rootnwm.com, rootnglobal.com 전체
 
 ## 9. 다운로드/업로드 기술 표준 (collector 계열)
 - 런타임에 Chrome download path 확인 (`request_cowork_directory`).
 - binary download는 same-origin `fetch → blob` (curl/wget 아님).
 - **Drive 업로드는 방법 D(`drive_uploader.py`, Drive API resumable+md5)를 최우선**으로 쓴다. Cowork에 연결된 폴더에 `drive_uploader.py`+`credentials.json`+`token.json` 이 있으면 브라우저 없이 무인 동작. 실행: `py|python3 drive_uploader.py --folder <ID> [--name-suffix _v2] <파일들>` (셋업: ir-collertor `scripts/SETUP_Drive_API_uploader.md`).
-  - 커넥터 `create_file`은 `base64Content`에 **파일 참조 `sha256:<hex>:<절대경로>`**를 넣으면 앱이 바이트를 직접 채운다(모델 전사 없음, 2026-11 실측: 115KB txt·131~479KB PDF 5건·0.37MB docx 용량 일치, txt는 내려받아 sha256 일치). 한도는 커넥터 1회 호출 4.2MB(파일 실효 약 3.1MB) — 6.3MB·11MB PDF는 거부됐다. 파일 참조 방식은 용량 일치로 검증 충분.
+  - 커넥터 `create_file`은 `base64Content`에 **파일 참조 `sha256:<hex>:<절대경로>`**를 넣으면 앱이 바이트를 직접 채운다(모델 전사 없음, 2026-11 실측: 115KB txt·131~479KB PDF 5건·0.37MB docx 용량 일치, txt는 내려받아 sha256 일치). 한도는 커넥터 1회 호출 4.2MB(파일 실효 약 3.1MB) — 6.3MB·11MB PDF는 거부됐다(2026-11-27 재실측: 3,104,532 B 성공 / 4,137,449 B 거부). 파일 참조 방식은 용량 일치로 검증 충분.
+    - **대용량 PDF 폴백(약 3.1MB 초과)**: ① qpdf 무손실 재압축 → ② 그래도 크면 `qpdf --pages`로 페이지 범위 분할(`_partNofM_pA-B.pdf`) → ③ 분할이 10조각 이상이거나 이미지 위주라 재압축 효과가 없으면(gs/pikepdf 20→15MB 실측) `pdftotext` 읽기 순서 모드(`-layout` 금지 — 다단 편집물이 뒤섞임) 페이지 마커 텍스트를 올리고 원본 URL 기재 + 수동 업로드 요청.
+    - 클라우드 세션의 데스크톱 Drive 미러 경유(`device_request_folder_access` → `device_commit_files`)는 auto mode 분류기가 1회 거부할 수 있다 — 사용자가 채팅으로 허용 의사를 밝힌 뒤 재요청하면 승인된다(2026-11 실측, 20건·약 135MB 1회 호출 → 약 30초 후 Drive 반영 → `search_files`로 id 확보 → `copy_file`로 캐논 폴더). 대용량이 예상되면 시작 시 폴더 연결을 먼저 요청하고, 안 되면 보고에 미업로드 목록 + 선택지를 남긴다.
     - claude.ai 샌드박스에서 `/mnt/user-data/outputs` 아래 파일은 파일 참조가 거부된다("can't be sent by reference") — `/home/claude` 아래로 복사한 뒤 참조한다(2026-11 실측, docx 4건 용량 일치).
     - 업로드 직후 `read_file_content`가 빈 문자열을 줄 수 있다(docx 인덱싱 지연). 30초 뒤 1회 재확인하고, 그래도 비면 '본문 재확인'(§4-3)은 `download_file_content`로 받아 sha256 일치 + python-docx 문단 추출로 대체한다. 해시가 다르면 손상으로 보고 재업로드.
   - 인라인 base64를 직접 타이핑하는 경우만 **≲30KB**(2026-10 실측: 45KB docx에서도 1글자 전사 오류). 약 3MB를 넘거나 파일 참조를 쓸 수 없으면 방법 D, 업로더가 없으면 연결된 로컬 Drive 동기화 폴더 경유 또는 사용자 수동 업로드로 돌리고 실패 항목으로 flag한다. `file_upload`(Chrome)는 Google Drive가 HTML `<input type=file>` 을 안 열어 **부적합**.
