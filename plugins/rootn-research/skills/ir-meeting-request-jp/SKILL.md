@@ -1,6 +1,6 @@
 ---
 name: ir-meeting-request-jp
-version: 261125
+version: 261127
 description: "일본 상장사 IR 미팅 요청 메일(일본어+영어)을 작성해 Gmail 임시보관함에 저장하는 스킬. 회사명·4자리 코드로 IR 이메일을 찾고, 웹폼 전용이면 ir-webform으로 진행. 트리거: 일본 IR 미팅 요청, 일본 회사 미팅, JP IR meeting, 일본 기업탐방, 7203T 같은 코드와 미팅 요청. 여러 회사면 회사별 반복."
 ---
 
@@ -147,39 +147,11 @@ RootNGlobal Investors
 
 ## IR 미팅 확정 답장 가이드라인
 
-상대방이 가능한 일정을 제안해오면, 사용자가 일정을 확정해달라고 요청할 때 아래 사항을 반드시 포함한다.
-
-### 필수 포함 내용
-
-1. **질문지 사전 발송 안내**: 미팅 1-2일 전에 질문 목록을 미리 공유할 예정임을 알린다.
-   > "We typically prepare a list of questions and share them with you 1-2 days prior to the meeting."
-
-2. **통역 필요 여부 확인**: 상대방 이메일에 통역(interpreter) 언급이 없는 경우, 우리 쪽에서 준비해야 하는지 질문한다.
-   > "Could you also let us know whether an interpreter will be needed, so we can prepare accordingly?"
-   
-   단, 상대방이 이미 통역 관련 언급을 했거나(예: "speakers will be Japanese speakers, please arrange interpreter on your side"), 우리 쪽에서 준비한다고 이미 확정된 경우에는 생략하고 그에 맞게 대응한다.
-
-3. **미팅 링크**: 상대방 이메일에 Zoom/Teams 등 미팅 링크나 "링크를 보내겠다"는 언급이 없는 경우, 우리 쪽에서 Google Meet 링크를 보내도 괜찮은지 제안한다.
-   > "If it is convenient, we can send a Google Meet link from our side — please let us know if that works for you."
-   
-   단, 상대방이 이미 "Zoom meeting을 arrange하겠다" 등 언급한 경우에는 생략한다.
-
-### 답장 언어 규칙
-
-상대방이 보내온 이메일의 언어에 맞춰 답장을 작성한다.
-
-- **일본어로 온 메일**: 일본어 + 영어 병기로 답장 (일본어 먼저, 구분선 후 영어)
-- **영어로 온 메일**: 영어로만 답장
-- **한국어로 온 메일**: 한국어로만 답장 (해당 없는 경우가 대부분)
-
-일본어 병기 시 경어(丁寧語/敬語)를 사용하고, 상대방 담당자명(예: 小林様)을 첫 줄에 명시한다.
-상대방 이메일에 CC가 있었다면 답장 CC에도 동일하게 포함한다.
-
-### CC 기본값
-확정 답장에도 동일하게 CC(common-rules §8 = `_config/sender.txt`의 `cc`)를 포함.
+상대가 일정 제안·확인 메일을 보내온 뒤의 회신은 `ir-meeting-reply` 스킬을 따른다(통역·링크·언어 분기 포함).
+이 스킬의 Step 0 follow-up(무응답 리마인드)은 그대로 이 스킬에서 처리한다.
 
 ---
- 
+
 ## 여러 회사를 한꺼번에 처리하는 경우
  
 사용자가 여러 회사를 한꺼번에 요청하면, 각 회사에 대해 Step 0~4를 반복한다. 가능하면 IR 연락처 검색을 병렬로 진행하여 시간을 절약한다.
