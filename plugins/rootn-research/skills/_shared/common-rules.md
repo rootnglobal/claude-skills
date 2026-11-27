@@ -89,8 +89,10 @@
 ## 12. 태스크 완료 후 스킬 피드백 루프
 - 태스크의 최종 산출물을 전달한 직후(매 turn이 아니라 태스크 단위 1회), 이번 실행에서 사용한 스킬에 반영할 개선점이 있는지 검토한다.
 - 검토 대상: 새로 확인된 소스·URL·기술적 우회법, 반복된 실패 패턴, 사용자가 수동으로 고친 부분.
-- 스킬 수정은 SSOT repo(`rootnglobal/claude-skills-2`)에서 업무 데스크톱 Claude Code만 한다. 설치된 플러그인 사본·업로드본은 고치지 않는다.
-- 다른 세션(클라우드·모바일·Cowork)은 SKILL.md를 직접 고치지 않고, 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다(무엇을·왜·어느 섹션). 데스크톱 세션이 모아서 일괄 처리한다.
+- 스킬 수정은 SSOT repo(`rootnglobal/claude-skills-2`)에서만 한다. 설치된 플러그인 사본·업로드본은 고치지 않는다.
+- 업무 데스크톱 Claude Code: master 직접 push(CLAUDE.md 검증 절차).
+- 그 밖의 세션(클라우드·모바일·Cowork)에서 repo push 권한을 얻을 수 있으면: `claude/<주제>` 브랜치 → master 대상 PR. master 직접 push 금지(pre-commit 훅의 내부 식별자 검사가 데스크톱에만 있고 pr-check가 그 역할을 대신함), 병합은 사용자가 pr-check 통과 확인 후. 커밋 전 `git config core.hooksPath .githooks`, check_skills·CLAUDE.md 식별자 grep 통과, 지시된 부분만 수정·version·CHANGELOG는 skill-authoring 규칙대로.
+- push 권한을 얻을 수 없는 세션은 수정 지시 txt를 Drive `Skill/` 폴더에 남긴다(무엇을·왜·어느 섹션). 데스크톱 세션이 모아서 일괄 처리한다.
 - 개선점이 없으면 "스킬 업데이트 없음" 한 줄로 종료한다.
 
 ## 13. 대용량 Drive 파일 처리 (커넥터 응답 폭증 대응)
@@ -103,5 +105,5 @@
 - 같은 절차를 2회 이상 반복하거나 결과 데이터가 큰 작업(다운로드·파싱·엑셀 빌드·업로드 검증, 전수 스캔, Drive·Sheets 대량 읽기)은 MCP·도구 결과를 컨텍스트로 흘리지 않고 스크립트로 처리해 요약만 읽는다. 1회성·소량 조회는 MCP 그대로.
 - 스킬마다 매번 새로 짜는 코드는 `skills/<name>/scripts/` 실행 파일로 고정하고, SKILL.md에는 언제·어떤 인자로 실행하고 출력의 어느 필드를 읽는지만 둔다.
 - 출력 규약: stdout은 요약 JSON 1줄(`ok`·건수·실패 항목·산출 파일 경로), 원데이터는 파일로. `_ops/` 트래커와 같다.
-- Chrome 수집: 로그인 탭에서 쓰는 DOM 탐색·다운로드 JS는 `scripts/<site>_snippet.js`로 두고 `javascript_tool`로 그대로 실행한다. 사이트 구조가 바뀌어 실패할 때만 탐색으로 전환하고, 새로 통한 snippet은 §12 경로(데스크톱이면 커밋, 다른 세션이면 Skill 폴더 지시 txt)로 남긴다.
+- Chrome 수집: 로그인 탭에서 쓰는 DOM 탐색·다운로드 JS는 `scripts/<site>_snippet.js`로 두고 `javascript_tool`로 그대로 실행한다. 사이트 구조가 바뀌어 실패할 때만 탐색으로 전환하고, 새로 통한 snippet은 §12 경로(데스크톱이면 커밋, 다른 세션이면 `claude/` 브랜치 PR, push 불가면 Skill 폴더 지시 txt)로 남긴다.
 - 일본 재무·대주주·대량보유: EDINET DB(무료 100 req/일, 질문 1건에 6~10 req). 대화형 개별 종목은 MCP `edinetdb`(경량 `/mcp/lite`), 전수 스캔은 REST(`X-API-Key`, 'RootN API Keys' 시트 `EDINETDB_API_KEY`) 또는 EDINET API v2(§9). 제3자 가공 데이터라 판정에 쓰는 핵심 숫자는 EDINET API v2 원천과 대조하고, 한도에 걸리면 EDINET API v2로 넘어간다.
