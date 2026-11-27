@@ -1,6 +1,6 @@
 ---
 name: capiq-collector
-version: 261124
+version: 261127
 description: "S&P Capital IQ에서 Claude in Chrome으로 종목 자료를 수집하는 스킬: 어닝콜 transcript 최근 2년→IR/transcripts/, 셀사이드 리포트→리서치/, 컨센서스 상세 Excel→리서치/consensus/, Key Developments·comps(요청 시). CapIQ 로그인 필요. 트리거: CapIQ, Capital IQ, 캡아이큐, transcript 받아줘, CapIQ 컨센서스/셀사이드. 파이프라인·jp-research-collector에서도 호출."
 ---
 

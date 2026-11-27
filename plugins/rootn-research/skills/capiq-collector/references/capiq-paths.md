@@ -5,7 +5,7 @@
 
 ## 0. 환경 / 로그인
 - URL capitaliq.spglobal.com → /web/client?auth=inherit 세션 상속 로그인(Chrome 기 로그인 전제, 별도 입력 없음).
-- 제품: S&P Capital IQ Pro. 계정 표시명 "Young Hwa Mo".
+- 제품: S&P Capital IQ Pro. 계정 표시명 = 리서처 본인 계정(실명은 문서에 쓰지 않음).
 - **다운로드 위치(메인 PC)**: `C:\Users\user\Desktop\Claude (drive 연동)\다운로드`.
   Chrome이 OS 저장창 없이 이 폴더로 스트리밍 저장. device bridge로 컨테이너 마운트(`mnt/다운로드`).
 - 쿠키 배너: "모두 거부"(ref로 클릭).
@@ -18,9 +18,9 @@
   (get_page_text/find는 여전히 iframe 표 텍스트 약함, read_page는 OK).
 - **다운로드 성공 검증도 스크린샷 불필요**: `device_bash`로 `ls mnt/다운로드/ | grep -i <종목>` (또는 `ls -lat | head`).
   device_list_dir 전량 덤프보다 device_bash grep이 토큰 효율 높음.
-- 다운로드는 한 건씩(클릭 → 5초 대기 → 폴더 grep 확인 → 다음). 배치 금지.
+- 다운로드는 한 건씩(클릭 → 10~12초 대기(§2) → 폴더 grep 확인 → 다음). 배치 금지.
 - `device_bash`가 'Workspace unavailable'이면 CIQ 자동 파일명(§2)을 추정해 `device_stage_files`로 존재만 확인한다(`device_list_dir` 전체 덤프는 수백 건이라 비효율). Detailed Estimates export 파일명은 추정에 실패했다 → 패턴 확인 필요(2026-11-20).
-- 2026-11-20(JT 2914): 스크린샷은 정상 동작했으나 capitaliq 도메인 `javascript_tool`이 'Permission denied' → JS 스크랩 경로(Estimate Highlights·Ownership 등) 불가. 스크린샷 판독으로 대체하고 신뢰도 '반'으로 표기.
+- capitaliq 도메인 `javascript_tool` 허용 여부는 세션마다 다르다 → 1회 시도 후 판단. 2026-11-20(JT 2914)은 'Permission denied'(스크린샷은 정상) → JS 스크랩 경로(Estimate Highlights·Ownership 등) 불가, 스크린샷 판독으로 대체하고 신뢰도 '반'으로 표기. 2026-11-27(SWCC 5805·Yamaichi 6941)은 정상 동작.
 
 ## 1. 검색 → tearsheet / MI KEY
 - **상단 Search는 자동화 입력 불가**(§9 참조). MI KEY는 `references/capiq-mikey-registry.md` 캐시로 해석 —
@@ -39,7 +39,10 @@
   - 어닝콜 표준: **SCRIPTS Asia: ENG-TRANSL WORD**(기존 업로드분과 일관). 스페셜콜은 ENG 단일본 WORD.
 - 2026-11-20 실측(JT 2914): 화면에 보이는 버전은 S&P Global: ENG / SCRIPTS Asia: JPN / SCRIPTS Asia: ENG 3개. `read_page`에 보이는 ENG-TRANSL 링크는 숨김 요소라 클릭해도 다운로드되지 않는다 → **영어로 진행하는 콜(대형주)은 'S&P Global: ENG WORD'를 표준**으로 한다(ENG-TRANSL은 보일 때만).
 - 'Include Future Events'가 기본으로 켜져 있어 미래 이벤트 행이 상단에 온다(무시).
-- 첫 클릭이 무시되는 경우가 있다(11/19 콜 1회차 미생성, 2회차 성공) → 폴더 확인 후 1회만 재클릭.
+- '첫 클릭 무시'로 보였던 건(11/19 콜 1회차 미생성) 실제로는 다운로드 지연(약 10초)이었다(2026-11-27 SWCC 재확인). 6초 만에 확인하고 재클릭하면 '(1)' 중복 파일이 생긴다 → 클릭 후 10~12초 대기 후 폴더 확인, 그래도 없을 때만 1회 재클릭.
+- 2026-11-27 실측(SWCC 5805): SCRIPTS Asia ENG-TRANSL WORD 6건은 gridcell ref+19 위치 규칙이 전 행 동일. 배치 클릭에서 1건(2026-06-12 Investor Day) 누락 → 단독 재클릭으로 확보.
+- 2026-11-27 실측(ARE Holdings 5857, 일본 중소형): 화면에 SCRIPTS Asia JPN/ENG만 보이고 S&P Global 버전은 숨김.
+- WORD 링크는 href 없는 JS 이벤트라 파일이 PC Chrome 다운로드 폴더로만 간다 → 다운로드 검증에 그 폴더 접근이 필요하다. 폴더 미연결 클라우드 세션이면 목록만 산출하고 다운로드는 보류·실패 항목으로 보고(5857, SWCC 6건).
 - 스페셜 콜 파일명 예: `<Company>_Shareholder or Analyst Call_<YYYY-MM-DD>_English.docx`.
 - 다운로드 파일명(CIQ 자동): `<Company>_<EventType>_<YYYY-MM-DD>_<Language>.docx`
   (ENG-TRANSL·ENG → `_English.docx`, JPN → `_Japanese.docx`).
@@ -84,6 +87,10 @@
     표를 긁어 컨테이너에서 xlsx 생성(신뢰도=화면 스크랩/반). 2차 실적: Sansan EPS FY27 0.45E/FY28 0.61E/FY29 0.79E,
     TP mean 12.66·8명; Kioxia TP mean 716.52·16명·Outperform·LT growth 43.17% + Multiples(NTM/2027FY),
     단 Kioxia EPS 표는 "No data matches your settings"로 미표시(통화/설정 이슈, 추후 설정 조정 필요).
+  - 회계기준 필터 기본값이 Japanese GAAP이라 IFRS 종목은 EPS 표가 'No data'(2026-11-27 ARE Holdings 5857). Kioxia(IFRS)도 같은 원인으로 추정. IFRS로 바꾸는 절차는 미확인.
+- **통화 전환(수집 전 1회)**: Estimates 계열은 기본 USD로 열린다. detailedEstimates에서 옵션에 'Reported Currency'가 있는
+  select(2026-11-27 6941은 id `section_1_control_22`, id는 바뀔 수 있어 옵션 텍스트로 찾는다)에 selectedIndex=0 + `change` 이벤트 →
+  Apply 버튼(id `Apply_section_1_control_21`) click. 이후 consensusEstimates·estimateHighlights도 REPORTED CURRENCY 유지(세션 지속).
   - Detailed Estimates export(2026 브로커별 상세)와 Estimate Highlights 스크랩(forward)은 **상보적** — 둘 다 보관.
 
 ## 5. 컨테이너/로컬 → Google Drive 업로드 — ★해결(방법 확정)
@@ -99,6 +106,9 @@
   3) `copy_file(fileId, parentId=캐논폴더, **title=원하는 이름**)`로 캐논 위치에 배치.
      ★ **title 반드시 지정** — 생략 시 "Copy of ..." 접두사가 붙어 기존 clean 파일과 불일치·중복 유발.
   4) intake 원본은 아카이브로 두거나 사용자 확인 후 정리.
+- **클라우드 세션(device_bash 없음)**: `device_request_folder_access`로 `C:\Users\user\Desktop\Drive` 연결 → `device_commit_files`
+  (/mnt/user-data/outputs → `_<종목>_intake_<yymmdd>\`) → 위 2)~3)과 같다. 폴더 접근 요청이 auto mode 분류기에 1회 거부되면
+  사용자가 채팅으로 허용 의사를 밝힌 뒤 재요청한다(승인 조건·실측은 common-rules §9). 2026-11-27 SWCC: 20건·약 135MB 1회 호출, 전건 용량 일치.
 - **캐논 folderId 확보(문서에 ID 직접 기재 금지)**:
   - `Investment Research` 루트 = Drive `Investment Research/_config/drive_folders.txt`의 `investment_research` 값.
     파일·키가 없으면 `search_files`로 title `Investment Research` 폴더를 찾는다.
@@ -109,6 +119,11 @@
 ## 6. 셀사이드(Investment & Market Research) — 2차 실측
 - URL /company/investmentresearch?id=<MI_KEY>&type=1. Date Range 기본이 Last 2 Years로 잡혀 있기도 함(확인).
 - 목록은 JS `table tr` 순회로 안정적으로 스크랩 가능(read_page는 파일명 라벨 약함).
+- **페이징**: 기본 50행/페이지. (a) 페이지 크기 select id `irGrid_i1_grid_table_page_size_selector`(5~100)에 value=100 + `change` 이벤트,
+  또는 (b) `document.getElementById('irGrid_i1_grid_table_next_page').click()`(그리드 안 '2' 등 페이지 링크 click도 가능) → 4~6초 대기 후 재스크랩으로 전 페이지 순회.
+  실측(2026-11-27): ARE Holdings 5857 158건 = 100행 2페이지, SWCC 5805 2년 153건 = 50행 4페이지.
+- **퀀트·자동 발행처 필터**: 정규식 `/Jefferson|Wright|SADIF|Plunkett/`로 걸러 실질 리서치만 인벤토리화. Smart Insider는 별도 표기.
+- 목록 부재 ≠ 미발간: Daiwa Securities는 broker estimates에는 나오지만 리서치 목록에는 없었다(2026-11-27 Yamaichi 6941).
 - **다운로드 게이트(재확인)**: 행의 `pdf` 링크 클릭 = 다운로드 아님(Report Details 모달). 체크박스 선택도
   자동화(클릭·JS)로 등록 안 됨 → PDF 미생성. **자동 원문 다운로드 불가**, 사용자 수동 필요. Wright 등 Synopsis-only.
 - **커버리지 실측**: Kioxia = 전통 증권사 equity 리서치 **없음**(Quant IP 월간 특허·Wright·S&P Ratings 신용·
@@ -128,6 +143,8 @@
 - Chrome 기본 다운로드폴더 ≠ Drive 미러(§5). 실제 미러 `C:\Users\user\Desktop\Drive` 사용.
 - `copy_file`는 title 미지정 시 "Copy of" 접두사 → 반드시 title 지정(§5). 삭제 도구 없음(§7).
 - 프리즈 시 섹션 URL 재navigate.
+- `javascript_tool` 반환은 약 1,500자에서 잘린다. 반환값에 쿼리스트링 포함 URL(`location.href`·링크 href 등)이나 'n=' 같은 문자열이
+  들어가면 결과 전체가 `[BLOCKED: Cookie/query string data]`로 막힌다 → 짧은 필드의 JSON 배열로 나눠 반환하고 URL은 반환하지 않는다(2026-11-27 5857·5805).
 
 ## 9. 신규 수집 섹션 — route·방법 (3차 실측, Kioxia 14356784 / Sansan 5184024)
 - **섹션 맵**(좌측 네비): Profile(Corporate Profile·Stock·Corporate Structure·Officers·Analyst Coverage·
@@ -139,14 +156,19 @@
 - **확정 route**: profile(id) · estimateHighlights(ID) · detailedEstimates(ID) · transcripts(id) ·
   investmentresearch(id,&type=1) · peerAnalyticsMain(id) · PublicOwnershipDetailed(ID) ·
   PublicOwnershipSummaryHistory/OwnershipSummary/OwnershipHistory · corporateStructure(Id) · analystCoverage(ID) ·
-  products · competitors · incomeStatement(ID)=**CreditStats Direct** · corporateCompensation(Id).
+  products · competitors · incomeStatement(ID)=**CreditStats Direct** · corporateCompensation(Id) ·
+  consensusEstimates(ID) · guidance(ID) · keyDevelopments (2026-11-27 Yamaichi 6941).
 - **★ CapIQ export 신뢰도(실측)**: Detailed Estimates=파일 O. **Estimate Highlights·Peer Comps="Export to Excel as Data"
   클릭해도 브라우저 다운로드 X**(서버 큐 추정). → 신규 섹션은 **JS 스크랩** 우선.
 - **Ownership Detailed 수집법(✓검증)**: `PublicOwnershipDetailed?ID=`. 데이터가 실제 `<table>`.
-  프로즌(이름) 테이블 index 1 + 스크롤(지표) 테이블 index 4를 **row index로 조인**.
+  프로즌(이름) 테이블 index 1 + 스크롤(지표) 테이블 index 4를 **row index로 조인**(헤더는 tables[3], 페이지당 25행; 2026-11-27 6941 재확인).
   지표 컬럼 순서: [0]shares [1]%O/S [2]MktValue($M) [3]Chg(shares) [4]Chg% [5]FilingDate ... [14]Country [15]Style [17]HolderType.
   → 컨테이너서 xlsx. Sansan 실측: 창업자 Terada 32.5%·Ichigo(액티비스트) 11.6%·Wellington·Greenoaks(VC/PE)·Vanguard·Nomura·BlackRock.
 - **Estimate Highlights 수집법(✓검증, §4)**: innerText('Target Price' 이후 슬라이스) 스크랩 → forward FY+1~+3.
+- **consensusEstimates 수집법(✓6941)**: `table tr`에 행 라벨이 없다 → innerText의 라벨 순서(Per Share: EPS/DPS/BVPS/CFPS/Shares,
+  Company: Revenue~ROA 18개)와 행 index로 조인. 통화는 §4 통화 전환 후 수집.
+- **analystCoverage(ID)**: 증권사별 Recommendation/TP 열이 'Not Entitled*'로 표시되면 그 증권사 원문은 권한 밖 →
+  셀사이드 원문 확보 가능 여부를 먼저 이 표로 판단한다(2026-11-27 SWCC 5805).
 - **Peer Comps(✗)**: `peerAnalyticsMain?id=` — 데이터가 커스텀 그리드(비-`<table>`), export도 미다운로드 → 자동 수집 비신뢰(수동).
 - **Financials(✗)**: incomeStatement가 CreditStats Direct(iframe), Kioxia 데이터·export 미노출 → Bloomberg BEst·EDINET로 대체.
 - **★ Search 위젯 → MI KEY 자동해석(✗ 심층조사 결론, 4차)**: 상단 Search·검색결과 모두 자동화 거부.
@@ -161,5 +183,5 @@
   - 미래 후보(미검증): Screener 그리드 API·Report Builder 엔티티 피커(REST 여지) — 필요 시 조사.
 - **route 추가 확정(4차, Sansan 5184024 좌측 네비 `<a href>` 실측)**: corporateStructure(Id) · analystCoverage(ID) ·
   committeeMembership · professionals · products. → analystCoverage·corporateStructure는 route 확정, `<table>` 스크랩 유력.
-- **미검증(table 스크랩 가능성 높음, 요청 시 확인)**: keyDevelopments · Business Relationships/Supply Chain ·
+- **미검증(table 스크랩 가능성 높음, 요청 시 확인)**: Business Relationships/Supply Chain ·
   Transactions · Corporate Issuance. 실행 시 `<table>` 유무 확인 후 스크랩(없으면 스킵·기록).
